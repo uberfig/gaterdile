@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <style>
+        * {
+            margin: 0%;
+        }
+
+        .top {
+            height: 10vh;
+        }
+
+        .chat {
+            height: 80vh;
+            background-color: red;
+            
+            display: flex;
+            flex-direction: column-reverse;
+            flex-wrap: nowrap;
+            overflow: auto;
+            /* overflow-y: scroll; */
+        }
+
+        .message {
+            height: 100px !important;
+            background-color: aqua;
+            margin: 4px;
+            flex-shrink: 0;
+        }
+
+        .input {
+            height: 10vh;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="top">
+
+    </div>
+    <div class="chat">
+        <div class="message"><p>1</p></div>
+        <div class="message"></div>
+        <div class="message"></div>
+        <div class="message"></div>
+        <div class="message"></div>
+        <div class="message"></div>
+        <div class="message"></div>
+        <div class="message"></div>
+
+    </div>
+    <div class="input">
+
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,6 @@
+[default.databases.diesel]
+url = "db/db.sqlite"
+timeout = 10
+
+[release.databases.diesel]
+url = "../qc-database/db.sqlite"
