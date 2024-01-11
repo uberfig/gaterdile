@@ -5,17 +5,17 @@ extern crate rocket_sync_db_pools;
 #[macro_use]
 extern crate diesel;
 
-use chrono::NaiveDateTime;
-use diesel::{prelude::*, result::{self, DatabaseErrorKind}};
+// use chrono::NaiveDateTime;
+use diesel::{prelude::*, result::Error};
 
 use rocket::{
     fairing::AdHoc,
     form::Form,
     fs::{relative, FileServer},
-    futures::future::NeverError,
+    // futures::future::NeverError,
     // State,
-    request::FlashMessage,
-    response::status,
+    // request::FlashMessage,
+    // response::status,
     response::{Flash, Redirect},
     serde::json::{self, Json},
     serde::{Deserialize, Serialize},
@@ -23,16 +23,51 @@ use rocket::{
     Build,
     Rocket,
 };
-use rocket_dyn_templates::Template;
+// use rocket_dyn_templates::Template;
 
-use parking_lot::Mutex;
+// use parking_lot::Mutex;
 
 // #[database("sqlite_database")]
 #[database("diesel")]
 pub struct DbConn(diesel::SqliteConnection);
 
+impl DbConn {
+    pub async fn get_user_by_id(&self, id: i32) -> Result<User, Error> {
+        let form: User = self
+            .run(move |conn| users::table.filter(users::id.eq(id)).first(conn))
+            .await?;
+        Ok(form)
+    }
+
+    pub async fn get_user_by_name(&self, name: String) -> Result<User, Error> {
+        let form: User = self
+            .run(move |conn| users::table.filter(users::username.eq(name)).first(conn))
+            .await?;
+        Ok(form)
+    }
+
+    pub async fn insert_user(&self, user: User) -> Result<usize, Error> {
+        let e = self
+            .run(move |c| {
+                diesel::insert_into(schema::users::table)
+                    .values(user)
+                    .execute(c)
+            })
+            .await?;
+        Ok(e)
+    }
+
+    pub async fn has_user(&self, name: String) -> bool {
+        let e = self.get_user_by_name(name).await;
+        match e {
+            Ok(_) => return true,
+            Err(_) => return false,
+        }
+    }
+}
+
 // use rocket::serde::Serialize;
-use diesel::{prelude::*, result::QueryResult};
+// use diesel::{prelude::*, result::QueryResult};
 pub mod schema {
     table! {
         users {
@@ -78,7 +113,7 @@ pub mod schema {
 
 // use schema::users;
 
-#[derive(Deserialize,Queryable, Insertable, Debug)]
+#[derive(Deserialize, Queryable, Insertable, Debug)]
 #[diesel(table_name = schema::users)]
 pub struct User {
     id: Option<i32>,
@@ -106,9 +141,14 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
+use schema::users;
 
 impl User {
     async fn insert(new_user: UserAuth, conn: &DbConn) -> InsertError {
+        if conn.has_user(new_user.username.clone()).await {
+            return InsertError::UsernameTaken;
+        }
+
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
         let password_hash = argon2.hash_password(new_user.password.as_bytes(), &salt);
@@ -119,19 +159,16 @@ impl User {
             Err(_) => return InsertError::InvalidPassword,
         }
 
-        let e = conn
-            .run(move |c| {
-                let t = User {
-                    id: None,
-                    username: new_user.username,
-                    nickname: None,
-                    password: pass,
-                    salt: salt.to_string(),
-                    sessions: None,
-                };
-                diesel::insert_into(schema::users::table).values(&t).execute(c)
-            })
-            .await;
+        let t = User {
+            id: None,
+            username: new_user.username,
+            nickname: None,
+            password: pass,
+            salt: salt.to_string(),
+            sessions: None,
+        };
+
+        let e = conn.insert_user(t).await;
         match e {
             Ok(x) => return InsertError::None(x),
             Err(x) => return InsertError::DbError(x),
@@ -139,27 +176,18 @@ impl User {
     }
 
     async fn auth(user: UserAuth, conn: DbConn) -> AuthErr {
-        use schema::users::dsl::*;
+        let e = conn.get_user_by_name(user.username).await;
+        let query;
+        match e {
+            Err(x) => return AuthErr::InvalidUsername,
+            Ok(x) => query = x,
+        }
 
-        // let e = conn.run(move |c| {
-        //     let e: Result<User, diesel::result::Error> = schema::users::table.filter(username.eq(user.username)).get_result::<User>(c);
-        // }).await;
-        
-        let result = schema::users::dsl::users
-    // .select((
-    //     username,
-    //     password,
-    // ))
-    .filter(username.eq(user.username))
-    .execute(&mut conn).await;
-    // .load::<User>(&mut conn);
-
-        // dbg!(&e);
-
-        return AuthErr::None;
-        // let result = users::dsl::users
-            // .filter(users::dsl::username.eq(&user.username))
-            // .select(user.username);
+        if query.password == user.password {
+            return AuthErr::None;
+        } else {
+            return AuthErr::InvalidPassword;
+        }
     }
 }
 
@@ -223,9 +251,15 @@ async fn auth_user(conn: DbConn, user: Form<UserAuth>) -> Flash<Redirect> {
     let err = User::auth(user, conn).await;
 
     match err {
-        AuthErr::None => return Flash::success(Redirect::to("/"), "user successfully authenticated."),
-        AuthErr::InvalidUsername => return  Flash::error(Redirect::to("/login"), "invalid username."),
-        AuthErr::InvalidPassword => return Flash::error(Redirect::to("/login"), "invalid password."),
+        AuthErr::None => {
+            return Flash::success(Redirect::to("/"), "user successfully authenticated.")
+        }
+        AuthErr::InvalidUsername => {
+            return Flash::error(Redirect::to("/login"), "invalid username.")
+        }
+        AuthErr::InvalidPassword => {
+            return Flash::error(Redirect::to("/login"), "invalid password.")
+        }
     }
 }
 
