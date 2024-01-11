@@ -6,7 +6,7 @@ extern crate rocket_sync_db_pools;
 extern crate diesel;
 
 use chrono::NaiveDateTime;
-use diesel::{prelude::*, result};
+use diesel::{prelude::*, result::{self, DatabaseErrorKind}};
 
 use rocket::{
     fairing::AdHoc,
@@ -76,10 +76,10 @@ pub mod schema {
     }
 }
 
-use schema::users;
+// use schema::users;
 
-#[derive(Deserialize, Insertable, Debug)]
-#[diesel(table_name = users)]
+#[derive(Deserialize,Queryable, Insertable, Debug)]
+#[diesel(table_name = schema::users)]
 pub struct User {
     id: Option<i32>,
     username: String,
@@ -97,16 +97,14 @@ enum InsertError {
 }
 
 enum AuthErr {
+    None,
     InvalidUsername,
     InvalidPassword,
 }
 
 use argon2::{
-    password_hash::{
-        rand_core::OsRng,
-        PasswordHash, PasswordHasher, PasswordVerifier, SaltString
-    },
-    Argon2
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Argon2,
 };
 
 impl User {
@@ -131,7 +129,7 @@ impl User {
                     salt: salt.to_string(),
                     sessions: None,
                 };
-                diesel::insert_into(users::table).values(&t).execute(c)
+                diesel::insert_into(schema::users::table).values(&t).execute(c)
             })
             .await;
         match e {
@@ -140,14 +138,28 @@ impl User {
         }
     }
 
-    fn auth(user: UserAuth, conn: &DbConn) -> AuthErr {
-        // use users::dsl::*;
+    async fn auth(user: UserAuth, conn: DbConn) -> AuthErr {
+        use schema::users::dsl::*;
 
-        let result = users::dsl::users
-            .filter(users::dsl::username.eq(&user.username))
-            .select;
+        // let e = conn.run(move |c| {
+        //     let e: Result<User, diesel::result::Error> = schema::users::table.filter(username.eq(user.username)).get_result::<User>(c);
+        // }).await;
         
-        
+        let result = schema::users::dsl::users
+    // .select((
+    //     username,
+    //     password,
+    // ))
+    .filter(username.eq(user.username))
+    .execute(&mut conn).await;
+    // .load::<User>(&mut conn);
+
+        // dbg!(&e);
+
+        return AuthErr::None;
+        // let result = users::dsl::users
+            // .filter(users::dsl::username.eq(&user.username))
+            // .select(user.username);
     }
 }
 
@@ -174,7 +186,6 @@ pub struct UserAuth {
     pub password: String,
 }
 
-
 #[post("/signup", data = "<new_user>")]
 async fn create_user(conn: DbConn, new_user: Form<UserAuth>) -> Flash<Redirect> {
     let user = new_user.into_inner();
@@ -191,8 +202,12 @@ async fn create_user(conn: DbConn, new_user: Form<UserAuth>) -> Flash<Redirect> 
         InsertError::UsernameTaken => {
             return Flash::error(Redirect::to("/login"), "username taken.")
         }
-        InsertError::DbError(_x) => return Flash::error(Redirect::to("/login"), "insertion error."),
-        InsertError::InvalidPassword => return Flash::error(Redirect::to("/login"), "invalid password."),
+        InsertError::DbError(_x) => {
+            return Flash::error(Redirect::to("/login"), "insertion error.")
+        }
+        InsertError::InvalidPassword => {
+            return Flash::error(Redirect::to("/login"), "invalid password.")
+        }
     }
 }
 
@@ -205,18 +220,12 @@ async fn auth_user(conn: DbConn, user: Form<UserAuth>) -> Flash<Redirect> {
     }
 
     // let err = User::insert(user, &conn).await;
-    let err = User::auth(user, &conn);
-    
+    let err = User::auth(user, conn).await;
 
     match err {
-        InsertError::None(x) => {
-            return Flash::success(Redirect::to("/"), "user successfully added.")
-        }
-        InsertError::UsernameTaken => {
-            return Flash::error(Redirect::to("/login"), "username taken.")
-        }
-        InsertError::DbError(_x) => return Flash::error(Redirect::to("/login"), "insertion error."),
-        InsertError::InvalidPassword => return Flash::error(Redirect::to("/login"), "invalid password."),
+        AuthErr::None => return Flash::success(Redirect::to("/"), "user successfully authenticated."),
+        AuthErr::InvalidUsername => return  Flash::error(Redirect::to("/login"), "invalid username."),
+        AuthErr::InvalidPassword => return Flash::error(Redirect::to("/login"), "invalid password."),
     }
 }
 
@@ -227,7 +236,7 @@ fn rocket() -> _ {
         // .attach(Template::fairing())
         .attach(AdHoc::on_ignite("Run Migrations", run_migrations))
         .mount("/", FileServer::from(relative!("static")))
-        .mount("/", routes![create_user])
+        .mount("/", routes![create_user, auth_user])
     // .mount("/", routes![index])
     // .mount("/todo", routes![new, toggle, delete])
     // .mount("/", routes![inbox, system, test])
