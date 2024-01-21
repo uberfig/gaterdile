@@ -1,0 +1,29 @@
+* {
+    margin: 0%;
+}
+
+.top {
+    height: 10vh;
+}
+
+.chat {
+    height: 80vh;
+    background-color: red;
+
+    display: flex;
+    flex-direction: column-reverse;
+    flex-wrap: nowrap;
+    overflow: auto;
+    /* overflow-y: scroll; */
+}
+
+.message {
+    height: 100px !important;
+    background-color: aqua;
+    margin: 4px;
+    flex-shrink: 0;
+}
+
+.input {
+    height: 10vh;
+}

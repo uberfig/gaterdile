@@ -4,3 +4,7 @@ timeout = 10
 
 [release.databases.diesel]
 url = "../qc-database/db.sqlite"
+
+# [development]
+# address = "localhost"
+# port = 9090
