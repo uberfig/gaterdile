@@ -33,7 +33,7 @@ use rocket::{
 //     Argon2,
 // };
 
-use chat::db::{AuthErr, DbConn, InsertError, Message, User, UserAuth};
+use gaterdile::db::{AuthErr, DbConn, InsertError, Message, User, UserAuth};
 use rocket_ws as ws;
 // use serde::ser;
 
