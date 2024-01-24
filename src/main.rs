@@ -1,334 +1,420 @@
 //gatordile
-#![recursion_limit = "1024"]
-#![type_length_limit = "1024"]
+#![recursion_limit = "2048"]
+#![type_length_limit = "2048"]
 #[macro_use]
 extern crate rocket;
-
 
 use std::time::Duration;
 
 //
 // use diesel::date_time_expr;
-use chat::schema;
-use chat::schema::*;
+use rocket::futures::SinkExt;
 use rocket::tokio;
 use rocket::tokio::time::interval;
-use schema::{usernames, users};
-
-use chrono::Utc;
-use chrono::{DateTime, NaiveDateTime};
-use diesel::deserialize;
-use diesel::{prelude::*, result::Error};
 
 use rocket::{
-	fairing::AdHoc,
-	form::Form,
-	fs::{relative, FileServer},
-	// futures::future::NeverError,
-	// State,
-	// request::FlashMessage,
-	// response::status,
-	response::{Flash, Redirect},
-	serde::json::{self, Json},
-	serde::{Deserialize, Serialize},
-	time::{OffsetDateTime, PrimitiveDateTime},
-	// tokio::time::{sleep, Duration},
-	Build,
-	Rocket,
+    fairing::AdHoc,
+    fs::{relative, FileServer},
+    // futures::future::NeverError,
+    // State,
+    // request::FlashMessage,
+    // response::status,
+    // response::{Flash, Redirect},
+    // serde::json::{self, Json},
+    serde::{Deserialize, Serialize},
+    // time::{OffsetDateTime, PrimitiveDateTime},
+    // tokio::time::{sleep, Duration},
+    Build,
+    Rocket,
 };
 
-use argon2::{
-	password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
-	Argon2,
-};
+// use argon2::{
+//     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+//     Argon2,
+// };
 
+use chat::{AuthErr, DbConn, InsertError, Message, User, UserAuth};
 use rocket_ws as ws;
-use chat::{
-	DbConn,
-	InsertError,
-	UserAuth,
-	AuthErr,
-	User,
-	Message,
-};
+// use serde::ser;
 
 async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
-	use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+    use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
-	const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+    const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
-	DbConn::get_one(&rocket)
-		.await
-		.expect("database connection")
-		.run(|conn| {
-			conn.run_pending_migrations(MIGRATIONS)
-				.expect("diesel migrations");
-		})
-		.await;
+    DbConn::get_one(&rocket)
+        .await
+        .expect("database connection")
+        .run(|conn| {
+            conn.run_pending_migrations(MIGRATIONS)
+                .expect("diesel migrations");
+        })
+        .await;
 
-	rocket
+    rocket
 }
-
-
 
 // #[post("/signup", data = "<new_user>")]
 async fn create_user(conn: &DbConn, user: UserAuth) -> InsertError {
-	// let user = new_user.into_inner();
-	if user.username.is_empty() {
-		return InsertError::InvalidUsername;
-	}
+    // let user = new_user.into_inner();
+    if user.username.is_empty() {
+        return InsertError::InvalidUsername;
+    }
 
-	let err = User::insert(user, conn).await;
+    let err = User::insert(user, conn).await;
 
-	return err;
+    return err;
 }
 
 // #[post("/login", data = "<user>")]
 async fn auth_user(conn: &DbConn, user: UserAuth) -> AuthErr {
-	// let user = user.into_inner();
+    // let user = user.into_inner();
 
-	if user.username.is_empty() {
-		return AuthErr::InvalidUsername;
-	}
-	return User::auth(user, conn).await;
+    if user.username.is_empty() {
+        return AuthErr::InvalidUsername;
+    }
+    return User::auth(user, conn).await;
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct NewMessage {
-	text: String,
+    text: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct React {
-	reaction: String,
-	message_id: i32,
+    reaction: String,
+    message_id: i32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Channel {
-	id: i32,
-	name: String,
+    id: i32,
+    name: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct ServerInfo {
-	id: i32,
-	chanels: Vec<Channel>
+    id: i32,
+    chanels: Vec<Channel>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct ChannelInfo {
-	messages: Vec<Message>,
+    messages: Vec<Message>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TransmissionMessage {
+    server: i32,
+    channel: i32,
+    reply: Option<i32>,
+    text: String,
+}
+
+impl TransmissionMessage {
+    fn to_message(&self, uid: i32) -> Message {
+        use std::time::SystemTime;
+        Message {
+            id: None,
+            sender: uid,
+            server: self.server,
+            channel: self.channel,
+            reply: self.reply,
+            text: self.text.clone(),
+            timestamp: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as i64,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 enum TransmissionType {
-	NewMessage(Message),
-	SendMessage(Message),
-	Reaction(React),
-	RequestAuth, //from server
-	// Salt(String),        //provides salt
-	Auth(UserAuth),
-	AuthResult(AuthErr),
-	GetServer(i32),	//requests to set the current server and get server info
-	GetChannel(i32), //requests the channel from the current selected server
-	InvalidTransmission,
-	CreateUser(UserAuth),
-	CreateUserResult(InsertError),
+    SendMessage(TransmissionMessage),
+    Reaction(React),
+    Auth(UserAuth),
+    GetServer(i32),       //requests to set the current server and get server info
+    GetChannel(i32, i32), //server, channel
+    CreateUser(UserAuth),
+    //from server only:
+    InvalidTransmission,
+    NewMessages(Vec<Message>),
+    RequestAuth,
+    AuthResult(AuthErr),
+    CreateUserResult(InsertError),
 }
 
 impl std::fmt::Display for TransmissionType {
-	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-		match self {
-    TransmissionType::NewMessage(_) => write!(f, "NewMessage"),
-    TransmissionType::SendMessage(_) => write!(f, "SendMessage"),
-    TransmissionType::Reaction(_) => write!(f, "Reaction"),
-    TransmissionType::RequestAuth => write!(f, "RequestAuth"),
-    TransmissionType::Auth(_) => write!(f, "Auth"),
-    TransmissionType::AuthResult(_) => write!(f, "AuthResult"),
-    TransmissionType::GetServer(_) => write!(f, "GetServer"),
-    TransmissionType::GetChannel(_) => write!(f, "GetChannel"),
-    TransmissionType::InvalidTransmission => write!(f, "InvalidTransmission"),
-    TransmissionType::CreateUser(_) => write!(f, "CreateUser"),
-    TransmissionType::CreateUserResult(_) => write!(f, "CreateUserResult"),
-		}
-	}
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            TransmissionType::NewMessages(_) => write!(f, "NewMessages"),
+            TransmissionType::SendMessage(_) => write!(f, "SendMessage"),
+            TransmissionType::Reaction(_) => write!(f, "Reaction"),
+            TransmissionType::RequestAuth => write!(f, "RequestAuth"),
+            TransmissionType::Auth(_) => write!(f, "Auth"),
+            TransmissionType::AuthResult(_) => write!(f, "AuthResult"),
+            TransmissionType::GetServer(_) => write!(f, "GetServer"),
+            TransmissionType::GetChannel(..) => write!(f, "GetChannel"),
+            TransmissionType::CreateUser(_) => write!(f, "CreateUser"),
+            TransmissionType::InvalidTransmission => write!(f, "InvalidTransmission"),
+            TransmissionType::CreateUserResult(_) => write!(f, "CreateUserResult"),
+        }
+    }
+}
+
+impl TransmissionType {
+    pub fn stringify(&self) -> String {
+        serde_json::to_string(&self).unwrap()
+    }
+    pub fn wrap_into_transmission(self) -> Transmission {
+        let name = self.to_string();
+        Transmission {
+            data: self,
+            transmission_type: name,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Transmission {
-	data: TransmissionType,
-	transmission_type: String,
+    data: TransmissionType,
+    transmission_type: String,
 }
 
 impl Transmission {
-	pub fn stringify(&self) -> String {
-		serde_json::to_string(&self).unwrap()
-	}
-	pub fn parse(val: &str) -> Result<Self, ()> {
-		let a = serde_json::from_str::<Transmission>(val);
-		match a {
-			Ok(x) => return Result::Ok(x),
-			Err(x) => return Result::Err(()),
-		}
-	}
+    pub fn stringify(&self) -> String {
+        serde_json::to_string(&self).unwrap()
+    }
+    pub fn parse(val: &str) -> Result<Self, ()> {
+        let a = serde_json::from_str::<Transmission>(val);
+        match a {
+            Ok(x) => return Result::Ok(x),
+            Err(x) => return Result::Err(()),
+        }
+    }
+    pub fn invalid() -> Transmission {
+        Transmission {
+            data: TransmissionType::InvalidTransmission,
+            transmission_type: TransmissionType::InvalidTransmission.to_string(),
+        }
+    }
+    pub async fn send(
+        &self,
+        stream: &mut ws::stream::DuplexStream,
+    ) -> Result<(), ws::result::Error> {
+        let _a = stream
+            .send(rocket_ws::Message::Text(self.stringify()))
+            .await;
+        _a
+    }
 }
 
-impl TransmissionType {
-	pub fn stringify(&self) -> String {
-		serde_json::to_string(&self).unwrap()
-	}
-	pub fn parse(val: &str) -> Result<Self, ()> {
-		let a = serde_json::from_str::<TransmissionType>(val);
-		match a {
-			Ok(x) => return Result::Ok(x),
-			Err(x) => return Result::Err(()),
-		}
-	}
+async fn handle_send_message(
+    t_msg: TransmissionMessage,
+    props: &mut ConnectionProps,
+    conn: &DbConn,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    let message = t_msg.to_message(props.uid);
+    conn.send_message(message).await;
+
+    props.listening_server = Some(props.listening_server.unwrap_or(t_msg.server));
+    props.listening_channel = Some(props.listening_server.unwrap_or(t_msg.channel));
+    fetch_new_messages(props, conn, stream).await;
+}
+
+async fn handle_auth(
+    user: UserAuth,
+    props: &mut ConnectionProps,
+    conn: &DbConn,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    let auth = auth_user(&conn, user).await;
+    match auth {
+        AuthErr::Success(x) => {
+            props.authenticated = true;
+            props.uid = x;
+        }
+        _ => {
+            props.authenticated = false;
+            props.uid = -1;
+        }
+    }
+    let a_result = TransmissionType::AuthResult(auth);
+    let name = a_result.to_string();
+    let _ = Transmission {
+        data: a_result,
+        transmission_type: name,
+    }
+    .send(stream)
+    .await;
+}
+
+async fn handle_get_channel(
+    server_id: i32,
+    channel_id: i32,
+    props: &mut ConnectionProps,
+    conn: &DbConn,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    let a = conn.get_channel_messages(server_id, channel_id, 10).await;
+    match a {
+        Ok(x) => {
+            props.listening_channel = Some(channel_id);
+            props.listening_server = Some(server_id);
+            let newlast = x.get(x.len() - 1);
+            match newlast {
+                Some(y) => {
+                    props.last_sent = Some(y.timestamp);
+                }
+                None => {
+                    println!("no new messages")
+                }
+            }
+
+            let _ = TransmissionType::NewMessages(x)
+                .wrap_into_transmission()
+                .send(stream)
+                .await;
+        }
+        Err(_) => {}
+    }
 }
 
 struct ConnectionProps {
-	uid: i32,
-	authenticated: bool,
-	listening_server: Option<i32>,
-	listening_channel: Option<i32>,
+    uid: i32,
+    authenticated: bool,
+    listening_server: Option<i32>,
+    listening_channel: Option<i32>,
+    last_sent: Option<i64>,
 }
 
-async fn handle_transmission(transmission: TransmissionType, props: &mut ConnectionProps, conn: &DbConn, stream: &mut ws::stream::DuplexStream) {
-	use rocket::futures::SinkExt;
-	println!("handleing: {}", transmission);
+async fn handle_transmission(
+    transmission: TransmissionType,
+    props: &mut ConnectionProps,
+    conn: &DbConn,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    // use rocket::futures::SinkExt;
+    println!("handleing: {}", transmission);
 
-	match transmission {
-		TransmissionType::NewMessage(x) => todo!(),
-		TransmissionType::SendMessage(x) => todo!(),
-		TransmissionType::Reaction(_) => todo!(),
-		TransmissionType::RequestAuth => todo!(),
-		TransmissionType::Auth(user) => {
-			let auth = auth_user(&conn, user).await;
-			match auth {
-				AuthErr::Success(x) => {
-					props.authenticated = true;
-					props.uid = x;
-	
-					let _ = stream
-								.send(rocket_ws::Message::Text(
-									TransmissionType::AuthResult(auth).stringify(),
-								))
-								.await;
-				},
-				_ => {
-					props.authenticated = false;
-					props.uid = -1;
-					let _ = stream
-								.send(rocket_ws::Message::Text(
-									TransmissionType::AuthResult(auth).stringify(),
-								))
-								.await;
-				}
-			}
-		},
-		TransmissionType::AuthResult(_) => {
-			let _ = stream
-						.send(rocket_ws::Message::Text(
-							TransmissionType::InvalidTransmission.stringify(),
-						))
-						.await;
-		},
-		TransmissionType::GetChannel(x) => todo!(),
-		TransmissionType::GetServer(x) => todo!(),
-		TransmissionType::InvalidTransmission => {
-			let _ = stream
-						.send(rocket_ws::Message::Text(
-							TransmissionType::InvalidTransmission.stringify(),
-						))
-						.await;
-		},
-    TransmissionType::CreateUser(x) => {
-		let err = create_user(conn, x).await;
-		match err {
-			InsertError::Success(x) => {
-				props.authenticated = true;
-				props.uid = x as i32;
-			},
-			_ => {},
-		}
-		let _ = stream
-						.send(rocket_ws::Message::Text(
-							TransmissionType::CreateUserResult(err).stringify(),
-						))
-						.await;
-	},
-    TransmissionType::CreateUserResult(x) => {
-		let _ = stream
-						.send(rocket_ws::Message::Text(
-							TransmissionType::InvalidTransmission.stringify(),
-						))
-						.await;
-	},
-    
-	}
+    match transmission {
+        TransmissionType::SendMessage(t_msg) => {
+            handle_send_message(t_msg, props, conn, stream).await;
+        }
+        TransmissionType::Reaction(_) => todo!(),
+
+        TransmissionType::Auth(user) => {
+            handle_auth(user, props, conn, stream).await;
+        }
+
+        TransmissionType::GetChannel(server_id, channel_id) => {
+            handle_get_channel(server_id, channel_id, props, conn, stream).await;
+        }
+        TransmissionType::GetServer(_x) => todo!(),
+
+        TransmissionType::CreateUser(x) => {
+            let err = create_user(conn, x).await;
+            match err {
+                InsertError::Success(x) => {
+                    props.authenticated = true;
+                    props.uid = x as i32;
+                }
+                _ => {
+                    props.authenticated = false;
+                    props.uid = -1;
+                }
+            }
+            let _ = TransmissionType::CreateUserResult(err)
+                .wrap_into_transmission()
+                .send(stream)
+                .await;
+        }
+
+        //invalid types from client
+        TransmissionType::InvalidTransmission => {
+            let _ = Transmission::invalid().send(stream).await;
+        }
+        TransmissionType::NewMessages(x) => {
+            let _ = Transmission::invalid().send(stream).await;
+        }
+        TransmissionType::RequestAuth => {
+            let _ = Transmission::invalid().send(stream).await;
+        }
+        TransmissionType::AuthResult(_) => {
+            let _ = Transmission::invalid().send(stream).await;
+        }
+        TransmissionType::CreateUserResult(_) => {
+            let _ = Transmission::invalid().send(stream).await;
+        }
+    }
+}
+
+async fn fetch_new_messages(
+    props: &mut ConnectionProps,
+    conn: &DbConn,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    if matches!(props.last_sent, None)
+        || matches!(props.listening_channel, None)
+        || matches!(props.listening_server, None)
+    {
+        return;
+    }
+    match props.last_sent {
+        Some(x) => {
+            let since = conn
+                .get_messages_since_timestamp(
+                    props.listening_server.unwrap(),
+                    props.listening_channel.unwrap(),
+                    x,
+                )
+                .await;
+            match since {
+                Ok(since) => {
+                    let newlast = since.get(since.len() - 1);
+                    match newlast {
+                        Some(y) => {
+                            props.last_sent = Some(y.timestamp);
+                            let _ = TransmissionType::NewMessages(since)
+                                .wrap_into_transmission()
+                                .send(stream)
+                                .await;
+                        }
+                        None => {
+                            println!("no new messages")
+                        }
+                    }
+                }
+                Err(e) => println!("no new messages or db errr {}", e),
+            }
+        }
+        None => println!("last sent not set!"),
+    }
 }
 
 //https://stackoverflow.com/questions/77780189/how-to-detect-rust-rocket-ws-client-disconnected-from-websocket
 #[get("/ws")]
 pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> {
-	use rocket::futures::{SinkExt, StreamExt};
+    use rocket::futures::{SinkExt, StreamExt};
 
-	ws.channel(move |mut stream: ws::stream::DuplexStream| {
+    ws.channel(move |mut stream: ws::stream::DuplexStream| {
 		Box::pin(async move {
 			let mut interval = interval(Duration::from_secs(6));
-			let mut props = ConnectionProps {uid: -1, authenticated:false, listening_server: None, listening_channel: None };
+			let mut props = ConnectionProps {uid: -1, authenticated:false, listening_server:None, listening_channel:None, last_sent: None };
 
 			tokio::spawn(async move {
-				let _ = stream
-					.send(rocket_ws::Message::Text(
-						TransmissionType::RequestAuth.stringify(),
-					))
-					.await;
-
-
-					let _ = stream
-					.send(rocket_ws::Message::Text(
-						Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }
-						.stringify(),
-					))
-					.await;
-
-					let react = TransmissionType::Reaction(React { reaction: "🙂".to_string(), message_id: 0});
-
-					let name = react.to_string();
-					let _ = stream
-					.send(rocket_ws::Message::Text(
-						Transmission { data: react, transmission_type: name }
-						.stringify(),
-					))
-					.await;
-
-					let auth = TransmissionType::Auth(UserAuth { username: "ivy".to_string(), password: "123".to_string() });
-
-					let name = auth.to_string();
-					let _ = stream
-					.send(rocket_ws::Message::Text(
-						Transmission { data: auth, transmission_type: name }
-						.stringify(),
-					))
-					.await;
-
-
-				// let _ = stream.send(ws::Message::Text(Transmission::Reaction(React { reaction: "🙂".to_string(), message_id: 0 }).stringify())).await;
+				let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
 
 				loop {
 					tokio::select! {
 						_ = interval.tick() => {
 							// Send message every 10 seconds
-							// let reading = get_latest_readings().await.unwrap();
-							// let reading = get_latest_readings().await.unwrap();
-							// let _ = stream.send(ws::Message::Text(serde_json::to_string(reading).unwrap())).await;
-							
-							// println!("Sent message");
-
-							// let _ = stream.send(ws::Message::Text("hello".to_string())).await;
-							// let _ = stream.send(ws::Message::Text(Transmission::Reaction(React { reaction: "🙂".to_string(), message_id: 0 }).stringify())).await;
+							if props.authenticated {
+								fetch_new_messages(&mut props, &conn, &mut stream).await;
+							}
 						}
 						Some(Ok(message)) = stream.next() => {
 							match message {
@@ -389,10 +475,10 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
 
 #[launch]
 fn rocket() -> _ {
-	rocket::build()
-		.attach(DbConn::fairing())
-		// .attach(Template::fairing())
-		.attach(AdHoc::on_ignite("Run Migrations", run_migrations))
-		.mount("/", FileServer::from(relative!("static")))
-		.mount("/", routes![message_channel])
+    rocket::build()
+        .attach(DbConn::fairing())
+        // .attach(Template::fairing())
+        .attach(AdHoc::on_ignite("Run Migrations", run_migrations))
+        .mount("/", FileServer::from(relative!("static")))
+        .mount("/", routes![message_channel])
 }

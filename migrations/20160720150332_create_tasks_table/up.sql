@@ -44,11 +44,12 @@ CREATE TABLE messages (
 	"sender"	INTEGER NOT NULL,
 	"server"	INTEGER NOT NULL,
 	"channel"	INTEGER NOT NULL,
-	"mentions"	BLOB,
+	-- "mentions"	BLOB,
 	"reply"		INTEGER, --null if not a reply, otherwise other message's id
 	"text"		TEXT,
-	"emoji"		BLOB,	--vec of structs with the name of the emoji and the emoji's server and id in the order they appear
-	"sqltime" 	DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	-- "emoji"		BLOB,	--vec of structs with the name of the emoji and the emoji's server and id in the order they appear
+	-- "sqltime" 	DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"timestamp"	BIGINT
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 

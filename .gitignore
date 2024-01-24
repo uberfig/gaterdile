@@ -1,2 +1,4 @@
 /target
 /db/db.sqlite
+/db/db.sqlite-shm
+/db/db.sqlite-wal

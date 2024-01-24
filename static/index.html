@@ -5,45 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat</title>
-    <style>
-        * {
-            margin: 0%;
-        }
-
-        .top {
-            height: 10vh;
-        }
-
-        .chat {
-            height: 80vh;
-            background-color: red;
-
-            display: flex;
-            flex-direction: column-reverse;
-            flex-wrap: nowrap;
-            overflow: auto;
-            /* overflow-y: scroll; */
-        }
-
-        .message {
-            height: 100px !important;
-            background-color: aqua;
-            margin: 4px;
-            flex-shrink: 0;
-        }
-
-        .input {
-            height: 10vh;
-        }
-    </style>
-     <script src="script.js"></script> 
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js"></script>
 </head>
 
 <body>
     <div class="top">
 
     </div>
-    <div class="chat">
+    <div class="chat" id="chat">
         <div class="message">
             <p>1</p>
         </div>
@@ -60,5 +30,33 @@
 
     </div>
 </body>
+<div class='auth_prompt' id="auth_prompt">
+    <div class="login" id="login">
+        <p class="auth_failure", id="auth_failure"></p>
+        <div>
+            <h1>Login</h1>
+            <form onsubmit="return login();" autocomplete="on" id="login_form">
+                <label for="username">Username</label><br><input type="text" name="username" />
+                <br>
+                <label for="password">Password</label><br><input type="password" name="password" />
+                <br>
+                <input type="submit" value="Login" />
+            </form>
+        </div>
+        <div>
+            <h1>Signup</h1>
+            <form onsubmit="return signup()" autocomplete="on" id="signup_form">
+                <label for="username">Username</label><br><input type="text" name="username" />
+                <br>
+                <label for="password">Password</label><br><input type="password" name="password" />
+                <br>
+                <input type="submit" value="Signup" />
+            </form>
+        </div>
+    </div>
+    <!-- <div class="signup" id="signup">
+        <h1>Login</h1>
+    </div> -->
+</div>
 
 </html>
