@@ -33,7 +33,7 @@ use rocket::{
 //     Argon2,
 // };
 
-use chat::{AuthErr, DbConn, InsertError, Message, User, UserAuth};
+use chat::db::{AuthErr, DbConn, InsertError, Message, User, UserAuth};
 use rocket_ws as ws;
 // use serde::ser;
 
@@ -165,9 +165,6 @@ impl std::fmt::Display for TransmissionType {
 }
 
 impl TransmissionType {
-    pub fn stringify(&self) -> String {
-        serde_json::to_string(&self).unwrap()
-    }
     pub fn wrap_into_transmission(self) -> Transmission {
         let name = self.to_string();
         Transmission {
@@ -191,7 +188,7 @@ impl Transmission {
         let a = serde_json::from_str::<Transmission>(val);
         match a {
             Ok(x) => return Result::Ok(x),
-            Err(x) => return Result::Err(()),
+            Err(_x) => return Result::Err(()),
         }
     }
     pub fn invalid() -> Transmission {
@@ -218,7 +215,7 @@ async fn handle_send_message(
     stream: &mut ws::stream::DuplexStream,
 ) {
     let message = t_msg.to_message(props.uid);
-    conn.send_message(message).await;
+    let _ = conn.send_message(message).await;
 
     props.listening_server = Some(props.listening_server.unwrap_or(t_msg.server));
     props.listening_channel = Some(props.listening_server.unwrap_or(t_msg.channel));
@@ -337,7 +334,7 @@ async fn handle_transmission(
         TransmissionType::InvalidTransmission => {
             let _ = Transmission::invalid().send(stream).await;
         }
-        TransmissionType::NewMessages(x) => {
+        TransmissionType::NewMessages(_) => {
             let _ = Transmission::invalid().send(stream).await;
         }
         TransmissionType::RequestAuth => {
@@ -398,7 +395,8 @@ async fn fetch_new_messages(
 //https://stackoverflow.com/questions/77780189/how-to-detect-rust-rocket-ws-client-disconnected-from-websocket
 #[get("/ws")]
 pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> {
-    use rocket::futures::{SinkExt, StreamExt};
+    // use rocket::futures::{SinkExt, StreamExt};
+    use rocket::futures::StreamExt;
 
     ws.channel(move |mut stream: ws::stream::DuplexStream| {
 		Box::pin(async move {
