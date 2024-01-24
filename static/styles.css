@@ -26,6 +26,13 @@
 
 .input {
     height: 10vh;
+    padding: 10px;
+    .text_input_container {
+        textarea {
+            width: 100%;
+        }
+    }
+    
 }
 
 .auth_prompt {

@@ -49,14 +49,35 @@ class Message {
 	sender;
 	server;
 	channel;
-	reply = null;
+	// reply = null;
 
-	constructor(text, replying = null) {
-
+	constructor(text, server, channel, replying = null) {
+		this.text = text;
+		this.sender = uid;
+		this.server = server;
+		this.channel = channel;
+		// this.reply = replying;
+	}
+}
+class TransmitMessage {
+	SendMessage;
+	constructor(text, server, channel, replying = null) {
+		this.SendMessage = new Message(text, server, channel, replying)
 	}
 }
 
+async function send_clicked() {
+	var input = document.getElementById("message_input").value;
+	document.getElementById("message_input").value = "";
+	send_message(input, 0, 0);
+}
 
+async function send_message(text, server, channel) {
+	var message = new TransmitMessage(text, server, channel);
+	var outgoing = new Transmission("Message", message);
+	serverConn.send(JSON.stringify(outgoing));
+	console.log("sent, ",JSON.stringify(outgoing));
+}
 
 async function get_connection(){
 	return new WebSocket("ws://127.0.0.1:8000/ws", "test");
@@ -76,6 +97,10 @@ function connected() {
 
 async function get_context(serverConn){
 	
+}
+
+function handle_NewMessage(message){
+
 }
 
 function prompt_auth(){
@@ -111,7 +136,7 @@ function auth_success(newid){
 	document.getElementById("auth_prompt").style.display = "none";
 }
 
-async function handle_AuthResult(serverConn, event){
+async function handle_AuthResult(event){
 
 	if (event.data.AuthResult.hasOwnProperty("Success")) {
 		console.log("Login Success");
@@ -132,10 +157,10 @@ async function handle_event(serverConn, event){
 			handle_authrequest(serverConn, event);
 			break;
 		case "AuthResult":
-			handle_AuthResult(serverConn, event);
+			handle_AuthResult(event);
 			break;
 		case "NewMessage":
-
+			handle_NewMessage(event.data);
 			break;
 		case "Reaction":
 
@@ -157,6 +182,7 @@ async function test(){
 	serverConn.onopen = (event) => {
 		// serverConn.send("Here's some text that the server is urgently awaiting!");
 		// serverConn.send(JSON.stringify(new Transmission("Reaction",new Reaction("🙂", 0))))
+		// send_message("hello", 0, 0);
 	};
 
 

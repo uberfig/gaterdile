@@ -6,5 +6,5 @@ extern crate diesel;
 #[macro_use]
 extern crate rocket_sync_db_pools;
 
-pub mod schema;
 pub mod db;
+pub mod schema;

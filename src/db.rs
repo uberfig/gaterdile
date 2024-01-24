@@ -3,9 +3,8 @@ use argon2::{
     Argon2,
 };
 // use chrono::NaiveDateTime;
-use rocket::serde::{Deserialize, Serialize};
 use crate::schema::schema;
-
+use rocket::serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserAuth {
@@ -108,10 +107,7 @@ pub struct Message {
 
 #[database("diesel")]
 pub struct DbConn(diesel::SqliteConnection);
-use diesel::{
-    prelude::*,
-    result::Error,
-};
+use diesel::{prelude::*, result::Error};
 use schema::{
     // messages::{self, channel},
     messages::{self},
@@ -194,7 +190,7 @@ impl DbConn {
                 a
             })
             .await;
-		e
+        e
     }
 
     pub async fn get_channel_messages(
@@ -206,10 +202,12 @@ impl DbConn {
         let val = self
             .run(move |conn| {
                 messages::dsl::messages
-					.filter(messages::dsl::server.eq(server_id))
-					.filter(messages::dsl::channel.eq(channel_id))
+                    .filter(messages::dsl::server.eq(server_id))
+                    .filter(messages::dsl::channel.eq(channel_id))
                     .order(messages::dsl::timestamp.desc())
                     .limit(amount)
+                    // .order(messages::dsl::id.desc())
+                    .order(messages::dsl::timestamp.asc())
                     .load::<Message>(conn)
             })
             .await;
@@ -222,13 +220,18 @@ impl DbConn {
         server_id: i32,
         channel_id: i32,
         since: chrono::NaiveDateTime,
+        amount: i64,
     ) -> Result<Vec<Message>, diesel::result::Error> {
         let val = self
             .run(move |conn| {
                 messages::dsl::messages
-					.filter(messages::dsl::server.eq(server_id))
-					.filter(messages::dsl::channel.eq(channel_id))
+                    .filter(messages::dsl::server.eq(server_id))
+                    .filter(messages::dsl::channel.eq(channel_id))
                     .filter(messages::dsl::timestamp.ge(since.timestamp_millis()))
+                    .order(messages::dsl::timestamp.desc())
+                    .limit(amount)
+                    .order(messages::dsl::timestamp.asc())
+                    // .order(messages::dsl::id.desc())
                     .load::<Message>(conn)
             })
             .await;
@@ -241,13 +244,44 @@ impl DbConn {
         server_id: i32,
         channel_id: i32,
         since: i64,
+        amount: i64,
     ) -> Result<Vec<Message>, diesel::result::Error> {
         let val = self
             .run(move |conn| {
                 messages::dsl::messages
-					.filter(messages::dsl::server.eq(server_id))
-					.filter(messages::dsl::channel.eq(channel_id))
+                    .filter(messages::dsl::server.eq(server_id))
+                    .filter(messages::dsl::channel.eq(channel_id))
                     .filter(messages::dsl::timestamp.ge(since))
+                    .order(messages::dsl::timestamp.desc())
+                    .limit(amount)
+                    .order(messages::dsl::timestamp.asc())
+                    // .order(messages::dsl::id.desc())
+                    .load::<Message>(conn)
+            })
+            .await;
+
+        val
+    }
+
+    pub async fn get_messages_since_timestamp_and_id(
+        &self,
+        server_id: i32,
+        channel_id: i32,
+        since: i64,
+        id: i32,
+        amount: i64,
+    ) -> Result<Vec<Message>, diesel::result::Error> {
+        let val = self
+            .run(move |conn| {
+                messages::dsl::messages
+                    .filter(messages::dsl::server.eq(server_id))
+                    .filter(messages::dsl::channel.eq(channel_id))
+                    .filter(messages::dsl::timestamp.ge(since))
+                    .order(messages::dsl::timestamp.desc())
+                    .limit(amount)
+                    // .order(messages::dsl::id.desc())
+                    .order(messages::dsl::timestamp.asc())
+                    .filter(messages::dsl::id.ne(id))
                     .load::<Message>(conn)
             })
             .await;

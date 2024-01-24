@@ -261,13 +261,17 @@ async fn handle_get_channel(
         Ok(x) => {
             props.listening_channel = Some(channel_id);
             props.listening_server = Some(server_id);
-            let newlast = x.get(x.len() - 1);
+            let newlast = x.get(x.len().wrapping_sub(1));
             match newlast {
                 Some(y) => {
-                    props.last_sent = Some(y.timestamp);
+                    props.last_sent_timestamp = Some(y.timestamp);
+                    props.last_sent_id = Some(y.id.unwrap());
+
+                    println!("newlast id: ");
+                    dbg!(y.id);
                 }
                 None => {
-                    println!("no new messages")
+                    println!("no messages")
                 }
             }
 
@@ -280,12 +284,14 @@ async fn handle_get_channel(
     }
 }
 
+#[derive(Debug)]
 struct ConnectionProps {
     uid: i32,
     authenticated: bool,
     listening_server: Option<i32>,
     listening_channel: Option<i32>,
-    last_sent: Option<i64>,
+    last_sent_timestamp: Option<i64>,
+    last_sent_id: Option<i32>,
 }
 
 async fn handle_transmission(
@@ -354,27 +360,39 @@ async fn fetch_new_messages(
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    if matches!(props.last_sent, None)
-        || matches!(props.listening_channel, None)
-        || matches!(props.listening_server, None)
-    {
+    if matches!(props.listening_channel, None) || matches!(props.listening_server, None) {
         return;
     }
-    match props.last_sent {
+
+    if matches!(props.last_sent_timestamp, None) {
+        handle_get_channel(props.listening_server.unwrap(), props.listening_channel.unwrap(), props, conn, stream).await;
+        return;
+    }
+
+    match props.last_sent_timestamp {
         Some(x) => {
             let since = conn
-                .get_messages_since_timestamp(
+                .get_messages_since_timestamp_and_id(
                     props.listening_server.unwrap(),
                     props.listening_channel.unwrap(),
                     x,
+                    props.last_sent_id.unwrap(),
+                    10,
                 )
                 .await;
             match since {
                 Ok(since) => {
-                    let newlast = since.get(since.len() - 1);
+                    let newlast = since.get(since.len().wrapping_sub(1));
                     match newlast {
                         Some(y) => {
-                            props.last_sent = Some(y.timestamp);
+                            if y.id == props.last_sent_id {
+                                return;
+                            }
+                            println!("newlast id: ");
+                            dbg!(y.id);
+
+                            props.last_sent_timestamp = Some(y.timestamp);
+                            props.last_sent_id = Some(y.id.unwrap());
                             let _ = TransmissionType::NewMessages(since)
                                 .wrap_into_transmission()
                                 .send(stream)
@@ -401,7 +419,7 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
     ws.channel(move |mut stream: ws::stream::DuplexStream| {
 		Box::pin(async move {
 			let mut interval = interval(Duration::from_secs(6));
-			let mut props = ConnectionProps {uid: -1, authenticated:false, listening_server:None, listening_channel:None, last_sent: None };
+			let mut props = ConnectionProps {uid: -1, authenticated:false, listening_server:None, listening_channel:None, last_sent_timestamp: None, last_sent_id: None };
 
 			tokio::spawn(async move {
 				let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
