@@ -16,9 +16,9 @@ pub mod schema {
     }
     table! {
         emojis {
-            id -> Nullable<Integer>,
-            server -> Integer,
-            name -> Text,
+            id      -> Nullable<Integer>,
+            server  -> Integer,
+            name    -> Text,
             attachmentid -> Integer,
         }
     }
@@ -69,6 +69,12 @@ pub mod schema {
             userid 	-> Integer,
             messageid -> Integer,
             emoji	-> Integer,
+        }
+    }
+    table! {
+        server_members (server_id) {
+            server_id -> Integer,
+            userid  -> Integer,
         }
     }
 }

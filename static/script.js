@@ -107,17 +107,72 @@ async function get_channel(serverConn, server, channel){
 	serverConn.send(JSON.stringify(val));
 }
 
+function create_message_element(message) {
+	console.log(message);
+		const parent = document.createElement("div");
+		parent.classList.add("message");
+
+		const uname_ele = document.createElement("p");
+		const uname = document.createTextNode(message.sender+":");
+		uname_ele.appendChild(uname);
+		uname_ele.style.color = "rgb(147, 240, 167)"
+		uname_ele.classList = "uname";
+		parent.appendChild(uname_ele);
+
+		let lines = message.text.split("\n");
+		for (let i=0; i < lines.length; i++) {
+			if (lines[i] == "") {
+				parent.appendChild(document.createElement("br"));
+				continue
+			}
+			const p_ele = document.createElement("p");
+			const node = document.createTextNode(lines[i]);
+			p_ele.appendChild(node)
+			parent.appendChild(p_ele);
+		}
+		
+		parent.id = message.id
+		parent.dataset.sender = message.sender;
+		
+		return parent;
+}
+
+// function isHidden(el) {
+//     var style = window.getComputedStyle(el);
+//     return (style.display === 'none')
+// }
+function checkVisible(elm) {
+	var rect = elm.getBoundingClientRect();
+	var viewHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
+	return !(rect.bottom < 0 || rect.top - viewHeight >= 0);
+  }
+
 function handle_NewMessage(message){
+	const chat = document.getElementById("chat");
 	console.log("we got a new message!: ", message);
+
 	for (let i = 0; i < message.NewMessages.length; i++) {
-		console.log(message.NewMessages[i]);
-		const chat = document.getElementById("chat");
-		const para = document.createElement("p");
-		const node = document.createTextNode(message.NewMessages[i].id + " from "+ message.NewMessages[i].sender + ": " + message.NewMessages[i].text.replace("\\n", "\n"));
-		para.appendChild(node);
-		para.id = message.NewMessages[i].id
+		let para = create_message_element(message.NewMessages[i]);
+		if (chat.lastChild != null && chat.lastChild.dataset != null) {
+			console.log("notnull");
+			console.log(chat.lastChild);
+
+			// console.log(chat.lastChild.dataset.sender, " and ", message.NewMessages[i].sender);
+
+			if (chat.lastChild.dataset.sender == message.NewMessages[i].sender) {
+				console.log("they match");
+				let above = para.querySelector(".uname");
+				above.style.display = "none";
+				chat.lastChild.style.paddingBottom = "0px"
+			}
+			
+		}
 		chat.appendChild(para);
-		para.scrollIntoView();
+		console.log("lastchild: ", chat.lastChild);
+		if (checkVisible(chat.lastChild)) {
+			para.scrollIntoView();
+		}
+		
 	}
 }
 
@@ -252,29 +307,37 @@ function signup() {
 
 test();
 
-function text_input_event(e) {
-	console.log(e);
-	if (e.key == "Enter") {
+function text_input_event(evt) {
+	console.log(evt);
+	if (evt.key == "Enter" && !evt.shiftKey) {
 		send_clicked()
-		return false
 	}
-	return true
 }
 
-function keydown(e) {
-	if (e.shiftKey) {
-		console.log("shift");
-		return
-	}
-	if (e.key == "Enter") {
-		send_clicked()
+// function keydown(evt) {
+// 	evt.preventDefault();
+// 	// if (evt) {
+// 	// 	console.log("shift");
+// 	// 	return
+// 	// }
+// 	if (evt.key == "Enter" && !evt.shiftKey) {
+// 		console.log("shiftkey: ",evt.shiftKey == true);
+// 		evt.preventDefault();
+// 		send_clicked();
+// 	}
+// }
+
+function prevent(evt) {
+	if (evt.key == "Enter" && !evt.shiftKey) {
+		evt.preventDefault();
 	}
 }
 
 // const input = document.querySelector("input");
 function initEvents(){
 	console.log("init");
-	document.getElementById("message_input").addEventListener("keydown", text_input_event);
+	document.getElementById("message_input").addEventListener("keydown", text_input_event, false);
+	document.getElementById("message_input").addEventListener("keypress", prevent, false);
 }
 
 window.onload = initEvents;

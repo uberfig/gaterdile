@@ -112,6 +112,17 @@ pub struct TransmissionMessage {
     text: String,
 }
 
+
+pub struct content {
+    contype: String,
+    data: message_contents,
+}
+pub enum message_contents {
+    text(String),
+    emoji(),
+    mention(),
+}
+
 impl TransmissionMessage {
     fn to_message(&self, uid: i32) -> Message {
         use std::time::SystemTime;
@@ -131,12 +142,30 @@ impl TransmissionMessage {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+struct UnameMap {
+    id: i32,
+    username: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct ChannelMap {
+    id: i32,
+    name: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct ServerInfoData {
+    users: Vec<UnameMap>,
+    channels: Vec<ChannelMap>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 enum TransmissionType {
     SendMessage(TransmissionMessage),
     Reaction(React),
     Auth(UserAuth),
-    GetServer(i32),       //requests to set the current server and get server info
-    GetChannel(i32, i32), //server, channel
+    GetServer(i32),       //requests to get server info
+    GetChannel(i32, i32), //server, channel gets the channels recent messages
     CreateUser(UserAuth),
     //from server only:
     InvalidTransmission,
@@ -144,6 +173,7 @@ enum TransmissionType {
     RequestAuth,
     AuthResult(AuthErr),
     CreateUserResult(InsertError),
+    ServerInfo(ServerInfoData),
 }
 
 impl std::fmt::Display for TransmissionType {
@@ -160,6 +190,7 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::CreateUser(_) => write!(f, "CreateUser"),
             TransmissionType::InvalidTransmission => write!(f, "InvalidTransmission"),
             TransmissionType::CreateUserResult(_) => write!(f, "CreateUserResult"),
+            TransmissionType::ServerInfo(_) => write!(f, "ServerInfo"),
         }
     }
 }
@@ -288,6 +319,15 @@ async fn handle_get_channel(
     }
 }
 
+async fn handle_get_server(
+    server_id: i32,
+    props: &mut ConnectionProps,
+    conn: &DbConn,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    
+}
+
 #[derive(Debug)]
 struct ConnectionProps {
     uid: i32,
@@ -320,7 +360,9 @@ async fn handle_transmission(
         TransmissionType::GetChannel(server_id, channel_id) => {
             handle_get_channel(server_id, channel_id, props, conn, stream).await;
         }
-        TransmissionType::GetServer(_x) => todo!(),
+        TransmissionType::GetServer(server_id) => {
+            handle_get_server(server_id, props, conn, stream).await;
+        },
 
         TransmissionType::CreateUser(x) => {
             let err = create_user(conn, x).await;
@@ -356,6 +398,9 @@ async fn handle_transmission(
         TransmissionType::CreateUserResult(_) => {
             let _ = Transmission::invalid().send(stream).await;
         }
+        TransmissionType::ServerInfo(_) => {
+            let _ = Transmission::invalid().send(stream).await;
+        },
     }
 }
 

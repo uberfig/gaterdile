@@ -1,13 +1,15 @@
 * {
     margin: 0%;
+    font-size: 1.1em;
 }
 
 .top {
-    height: 10vh;
+    background-color: rgb(53, 55, 75);
+    height: 3em;
 }
 
 .chat {
-    height: 80vh;
+    height: calc(100vh - 8em);
     /* background-color: red; */
     background-color: rgb(27, 30, 53);
     color: rgb(231, 230, 216);
@@ -21,15 +23,30 @@
 }
 
 .message {
-    height: 100px !important;
-    background-color: aqua;
-    margin: 4px;
-    flex-shrink: 0;
+    /* height: 100px !important; */
+    /* background-color: aqua; */
+    margin-left: 12px;
+    margin-right: 12px;
+    padding-bottom: 10px;
+    /* margin-top: 2px;
+    margin-bottom: 2px; */
+    /* padding: 4px; */
+    padding-left: 4px;
+    padding-right: 4px;
+    /* flex-shrink: 0; */
+}
+
+.message:hover {
+    background-color: rgba(121, 121, 121, 0.5);
 }
 
 .input {
-    height: 10vh;
-    padding: 10px;
+    background-color: rgb(53, 55, 75);
+    /* background-color: rgb(147, 240, 167); */
+    border-top: 2px;
+    /* height: 10vh; */
+    height: 4em;
+    padding: 0.5em;
     .text_input_container {
         textarea {
             width: 100%;
