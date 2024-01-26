@@ -76,16 +76,16 @@ async function send_message(text, server, channel) {
 	var message = new TransmitMessage(text, server, channel);
 	var outgoing = new Transmission("Message", message);
 	serverConn.send(JSON.stringify(outgoing));
-	console.log("sent, ",JSON.stringify(outgoing));
+	console.log("sent, ", outgoing);
 }
 
-async function get_connection(){
+async function get_connection() {
 	return new WebSocket("ws://127.0.0.1:8000/ws", "test");
 }
 
 //display to the user that they disconnected from the server
 //and attempt to reconnect at perodic intervals
-function disconnected(){
+function disconnected() {
 
 }
 
@@ -102,39 +102,38 @@ class GetChannelTransmit {
 		this.GetChannel.push(channel);
 	}
 }
-async function get_channel(serverConn, server, channel){
+async function get_channel(serverConn, server, channel) {
 	const val = new Transmission("GetChannel", new GetChannelTransmit(server, channel));
 	serverConn.send(JSON.stringify(val));
 }
 
 function create_message_element(message) {
-	console.log(message);
-		const parent = document.createElement("div");
-		parent.classList.add("message");
+	const parent = document.createElement("div");
+	parent.classList.add("message");
 
-		const uname_ele = document.createElement("p");
-		const uname = document.createTextNode(message.sender+":");
-		uname_ele.appendChild(uname);
-		uname_ele.style.color = "rgb(147, 240, 167)"
-		uname_ele.classList = "uname";
-		parent.appendChild(uname_ele);
+	const uname_ele = document.createElement("p");
+	const uname = document.createTextNode(message.sender + ":");
+	uname_ele.appendChild(uname);
+	uname_ele.style.color = "rgb(147, 240, 167)"
+	uname_ele.classList = "uname";
+	parent.appendChild(uname_ele);
 
-		let lines = message.text.split("\n");
-		for (let i=0; i < lines.length; i++) {
-			if (lines[i] == "") {
-				parent.appendChild(document.createElement("br"));
-				continue
-			}
-			const p_ele = document.createElement("p");
-			const node = document.createTextNode(lines[i]);
-			p_ele.appendChild(node)
-			parent.appendChild(p_ele);
+	let lines = message.text.split("\n");
+	for (let i = 0; i < lines.length; i++) {
+		if (lines[i] == "") {
+			parent.appendChild(document.createElement("br"));
+			continue
 		}
-		
-		parent.id = message.id
-		parent.dataset.sender = message.sender;
-		
-		return parent;
+		const p_ele = document.createElement("p");
+		const node = document.createTextNode(lines[i]);
+		p_ele.appendChild(node)
+		parent.appendChild(p_ele);
+	}
+
+	parent.id = message.id
+	parent.dataset.sender = message.sender;
+
+	return parent;
 }
 
 // function isHidden(el) {
@@ -145,50 +144,43 @@ function checkVisible(elm) {
 	var rect = elm.getBoundingClientRect();
 	var viewHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
 	return !(rect.bottom < 0 || rect.top - viewHeight >= 0);
-  }
+}
 
-function handle_NewMessage(message){
+function handle_NewMessage(message) {
 	const chat = document.getElementById("chat");
-	console.log("we got a new message!: ", message);
 
 	for (let i = 0; i < message.NewMessages.length; i++) {
 		let para = create_message_element(message.NewMessages[i]);
 		if (chat.lastChild != null && chat.lastChild.dataset != null) {
-			console.log("notnull");
-			console.log(chat.lastChild);
-
-			// console.log(chat.lastChild.dataset.sender, " and ", message.NewMessages[i].sender);
 
 			if (chat.lastChild.dataset.sender == message.NewMessages[i].sender) {
-				console.log("they match");
 				let above = para.querySelector(".uname");
 				above.style.display = "none";
 				chat.lastChild.style.paddingBottom = "0px"
 			}
-			
+
 		}
 		chat.appendChild(para);
-		console.log("lastchild: ", chat.lastChild);
 		if (checkVisible(chat.lastChild)) {
 			para.scrollIntoView();
 		}
-		
+
 	}
 }
 
-function prompt_auth(){
+function prompt_auth() {
 	document.getElementById("auth_prompt").style.display = "flex";
 }
 
-function hide_auth(){
+function hide_auth() {
 	document.getElementById("auth_prompt").style.display = "none";
 }
 
-async function handle_authrequest(serverConn, event){
+async function handle_authrequest(serverConn, event) {
 	prompt_auth();
 }
 
-function auth_failure(reason){
+function auth_failure(reason) {
 	authenticated = false;
 	uid = -1;
 
@@ -198,7 +190,7 @@ function auth_failure(reason){
 	display.style.display = "inline";
 }
 
-function auth_success(newid){
+function auth_success(newid) {
 	authenticated = true;
 	uid = newid;
 
@@ -209,7 +201,7 @@ function auth_success(newid){
 	document.getElementById("auth_prompt").style.display = "none";
 }
 
-async function handle_AuthResult(serverConn, event){
+async function handle_AuthResult(serverConn, event) {
 
 	if (event.data.AuthResult.hasOwnProperty("Success")) {
 		console.log("Login Success");
@@ -220,10 +212,13 @@ async function handle_AuthResult(serverConn, event){
 	}
 }
 
-async function handle_event(serverConn, event){
+async function handle_serverinfo(event) {
+	console.log(event);
+}
+
+async function handle_event(serverConn, event) {
 	// if event
-	console.log("handleing event: ");
-	console.log(event.transmission_type);
+	console.log("handleing event: ", event.transmission_type);
 
 	switch (event.transmission_type) {
 		case "RequestAuth":
@@ -238,6 +233,15 @@ async function handle_event(serverConn, event){
 		case "Reaction":
 
 			break;
+		case "ServerInfo":
+			handle_serverinfo(event.data);
+			break;
+		case "UserServers":
+
+			break;
+		case "JoinServerResult":
+
+			break;
 		case "CreateUserResult":
 
 			break;
@@ -249,7 +253,7 @@ async function handle_event(serverConn, event){
 }
 
 var serverConn;
-async function test(){
+async function test() {
 	serverConn = await get_connection();
 
 	serverConn.onopen = (event) => {
@@ -269,37 +273,27 @@ async function test(){
 		handle_event(serverConn, val);
 	};
 
-// exampleSocket.close();
+	// exampleSocket.close();
 }
 function login() {
-	console.log("login");
-
-	// data = document.getElementById("login_form")
 	var form = document.getElementById("login_form")
 	var formData = new FormData(form);
 	formData = Object.fromEntries(formData);
 
-	console.log(formData);
-	console.log(formData.username);
 	creds = new Auth(formData.username, formData.password);
-	val = JSON.stringify(new Transmission("Auth",creds));
+	val = JSON.stringify(new Transmission("Auth", creds));
 	serverConn.send(val);
-	// console.log(Object.fromEntries(formData));	
 
 	return false;
 }
 
 function signup() {
-	console.log("signup")
-
 	var form = document.getElementById("signup_form")
 	var formData = new FormData(form);
 	formData = Object.fromEntries(formData);
 
-	console.log(formData);
-	console.log(formData.username);
 	creds = new CreateUser(formData.username, formData.password);
-	val = JSON.stringify(new Transmission("CreateUser",creds));
+	val = JSON.stringify(new Transmission("CreateUser", creds));
 	serverConn.send(val);
 
 	return false;
@@ -308,24 +302,10 @@ function signup() {
 test();
 
 function text_input_event(evt) {
-	console.log(evt);
 	if (evt.key == "Enter" && !evt.shiftKey) {
 		send_clicked()
 	}
 }
-
-// function keydown(evt) {
-// 	evt.preventDefault();
-// 	// if (evt) {
-// 	// 	console.log("shift");
-// 	// 	return
-// 	// }
-// 	if (evt.key == "Enter" && !evt.shiftKey) {
-// 		console.log("shiftkey: ",evt.shiftKey == true);
-// 		evt.preventDefault();
-// 		send_clicked();
-// 	}
-// }
 
 function prevent(evt) {
 	if (evt.key == "Enter" && !evt.shiftKey) {
@@ -334,7 +314,7 @@ function prevent(evt) {
 }
 
 // const input = document.querySelector("input");
-function initEvents(){
+function initEvents() {
 	console.log("init");
 	document.getElementById("message_input").addEventListener("keydown", text_input_event, false);
 	document.getElementById("message_input").addEventListener("keypress", prevent, false);

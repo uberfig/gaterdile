@@ -167,6 +167,7 @@ enum TransmissionType {
     GetChannel(i32, i32), //server, channel gets the channels recent messages
     CreateUser(UserAuth),
     GetUserServers,
+    JoinServer(i32),
     //from server only:
     InvalidTransmission,
     NewMessages(Vec<Message>),
@@ -175,6 +176,7 @@ enum TransmissionType {
     CreateUserResult(InsertError),
     ServerInfo(ServerInfoData),
     UserServers(Vec<ServerMember>),
+    JoinServerResult(),
 }
 
 impl std::fmt::Display for TransmissionType {
@@ -194,6 +196,8 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::ServerInfo(_) => write!(f, "ServerInfo"),
             TransmissionType::GetUserServers => write!(f, "GetUserServers"),
             TransmissionType::UserServers(_) => write!(f, "UserServers"),
+            TransmissionType::JoinServer(_) => todo!(),
+            TransmissionType::JoinServerResult() => todo!(),
         }
     }
 }
@@ -327,7 +331,6 @@ async fn handle_get_channel(
 
 async fn handle_get_server(
     server_id: i32,
-    props: &mut ConnectionProps,
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
@@ -378,7 +381,7 @@ async fn handle_transmission(
             handle_get_channel(server_id, channel_id, props, conn, stream).await;
         }
         TransmissionType::GetServer(server_id) => {
-            handle_get_server(server_id, props, conn, stream).await;
+            handle_get_server(server_id, conn, stream).await;
         }
 
         TransmissionType::CreateUser(x) => {
@@ -422,6 +425,8 @@ async fn handle_transmission(
         TransmissionType::UserServers(_) => {
             let _ = Transmission::invalid().send(stream).await;
         }
+        TransmissionType::JoinServer(_) => todo!(),
+        TransmissionType::JoinServerResult() => todo!(),
     }
 }
 
