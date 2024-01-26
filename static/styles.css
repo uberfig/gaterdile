@@ -8,10 +8,13 @@
 
 .chat {
     height: 80vh;
-    background-color: red;
+    /* background-color: red; */
+    background-color: rgb(27, 30, 53);
+    color: rgb(231, 230, 216);
 
     display: flex;
-    flex-direction: column-reverse;
+    /* flex-direction: column-reverse; */
+    flex-direction: column;
     flex-wrap: nowrap;
     overflow: auto;
     /* overflow-y: scroll; */

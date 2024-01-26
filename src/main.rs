@@ -214,6 +214,10 @@ async fn handle_send_message(
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
+    if t_msg.text.trim().is_empty() {
+        let _ = TransmissionType::InvalidTransmission.wrap_into_transmission().send(stream).await;
+        return;
+    }
     let message = t_msg.to_message(props.uid);
     let _ = conn.send_message(message).await;
 
@@ -418,12 +422,13 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
 
     ws.channel(move |mut stream: ws::stream::DuplexStream| {
 		Box::pin(async move {
-			let mut interval = interval(Duration::from_secs(6));
+			let mut interval = interval(Duration::from_secs(1));
 			let mut props = ConnectionProps {uid: -1, authenticated:false, listening_server:None, listening_channel:None, last_sent_timestamp: None, last_sent_id: None };
 
 			tokio::spawn(async move {
 				let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
 
+                let _ = TransmissionType::GetChannel(1,2).wrap_into_transmission().send(&mut stream).await;
 				loop {
 					tokio::select! {
 						_ = interval.tick() => {

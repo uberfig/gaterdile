@@ -95,12 +95,30 @@ function connected() {
 
 }
 
-async function get_context(serverConn){
-	
+class GetChannelTransmit {
+	GetChannel = [];
+	constructor(server, channel) {
+		this.GetChannel.push(server);
+		this.GetChannel.push(channel);
+	}
+}
+async function get_channel(serverConn, server, channel){
+	const val = new Transmission("GetChannel", new GetChannelTransmit(server, channel));
+	serverConn.send(JSON.stringify(val));
 }
 
 function handle_NewMessage(message){
-
+	console.log("we got a new message!: ", message);
+	for (let i = 0; i < message.NewMessages.length; i++) {
+		console.log(message.NewMessages[i]);
+		const chat = document.getElementById("chat");
+		const para = document.createElement("p");
+		const node = document.createTextNode(message.NewMessages[i].id + " from "+ message.NewMessages[i].sender + ": " + message.NewMessages[i].text.replace("\\n", "\n"));
+		para.appendChild(node);
+		para.id = message.NewMessages[i].id
+		chat.appendChild(para);
+		para.scrollIntoView();
+	}
 }
 
 function prompt_auth(){
@@ -136,11 +154,12 @@ function auth_success(newid){
 	document.getElementById("auth_prompt").style.display = "none";
 }
 
-async function handle_AuthResult(event){
+async function handle_AuthResult(serverConn, event){
 
 	if (event.data.AuthResult.hasOwnProperty("Success")) {
 		console.log("Login Success");
 		auth_success(event.data.AuthResult.Success);
+		get_channel(serverConn, 0, 0);
 	} else {
 		auth_failure(event.data.AuthResult);
 	}
@@ -150,16 +169,15 @@ async function handle_event(serverConn, event){
 	// if event
 	console.log("handleing event: ");
 	console.log(event.transmission_type);
-	console.log(event);
 
 	switch (event.transmission_type) {
 		case "RequestAuth":
 			handle_authrequest(serverConn, event);
 			break;
 		case "AuthResult":
-			handle_AuthResult(event);
+			handle_AuthResult(serverConn, event);
 			break;
-		case "NewMessage":
+		case "NewMessages":
 			handle_NewMessage(event.data);
 			break;
 		case "Reaction":
@@ -191,8 +209,7 @@ async function test(){
 	serverConn.onmessage = (event) => {
 		const val = JSON.parse(event.data);
 
-		console.log("got:");
-		console.log(val);
+		console.log("got:", val);
 
 		handle_event(serverConn, val);
 	};
@@ -234,3 +251,30 @@ function signup() {
 }
 
 test();
+
+function text_input_event(e) {
+	console.log(e);
+	if (e.key == "Enter") {
+		send_clicked()
+		return false
+	}
+	return true
+}
+
+function keydown(e) {
+	if (e.shiftKey) {
+		console.log("shift");
+		return
+	}
+	if (e.key == "Enter") {
+		send_clicked()
+	}
+}
+
+// const input = document.querySelector("input");
+function initEvents(){
+	console.log("init");
+	document.getElementById("message_input").addEventListener("keydown", text_input_event);
+}
+
+window.onload = initEvents;
