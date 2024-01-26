@@ -9,8 +9,8 @@ use std::time::Duration;
 //
 // use diesel::date_time_expr;
 use rocket::futures::SinkExt;
-use rocket::tokio;
 use rocket::tokio::time::interval;
+use rocket::tokio::{self, join};
 
 use rocket::{
     fairing::AdHoc,
@@ -33,7 +33,7 @@ use rocket::{
 //     Argon2,
 // };
 
-use gaterdile::db::{AuthErr, DbConn, InsertError, Message, User, UserAuth};
+use gaterdile::db::{AuthErr, Channel, DbConn, InsertError, Message, ServerMember, User, UserAuth};
 use rocket_ws as ws;
 // use serde::ser;
 
@@ -87,17 +87,17 @@ struct React {
     message_id: i32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct Channel {
-    id: i32,
-    name: String,
-}
+// #[derive(Debug, Deserialize, Serialize)]
+// struct Channel {
+//     id: i32,
+//     name: String,
+// }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct ServerInfo {
-    id: i32,
-    chanels: Vec<Channel>,
-}
+// #[derive(Debug, Deserialize, Serialize)]
+// struct ServerInfo {
+//     id: i32,
+//     chanels: Vec<Channel>,
+// }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct ChannelInfo {
@@ -111,7 +111,6 @@ pub struct TransmissionMessage {
     reply: Option<i32>,
     text: String,
 }
-
 
 pub struct content {
     contype: String,
@@ -155,8 +154,8 @@ struct ChannelMap {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct ServerInfoData {
-    users: Vec<UnameMap>,
-    channels: Vec<ChannelMap>,
+    users: Vec<ServerMember>,
+    channels: Vec<Channel>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -167,6 +166,7 @@ enum TransmissionType {
     GetServer(i32),       //requests to get server info
     GetChannel(i32, i32), //server, channel gets the channels recent messages
     CreateUser(UserAuth),
+    GetUserServers,
     //from server only:
     InvalidTransmission,
     NewMessages(Vec<Message>),
@@ -174,6 +174,7 @@ enum TransmissionType {
     AuthResult(AuthErr),
     CreateUserResult(InsertError),
     ServerInfo(ServerInfoData),
+    UserServers(Vec<ServerMember>),
 }
 
 impl std::fmt::Display for TransmissionType {
@@ -191,6 +192,8 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::InvalidTransmission => write!(f, "InvalidTransmission"),
             TransmissionType::CreateUserResult(_) => write!(f, "CreateUserResult"),
             TransmissionType::ServerInfo(_) => write!(f, "ServerInfo"),
+            TransmissionType::GetUserServers => write!(f, "GetUserServers"),
+            TransmissionType::UserServers(_) => write!(f, "UserServers"),
         }
     }
 }
@@ -246,7 +249,10 @@ async fn handle_send_message(
     stream: &mut ws::stream::DuplexStream,
 ) {
     if t_msg.text.trim().is_empty() {
-        let _ = TransmissionType::InvalidTransmission.wrap_into_transmission().send(stream).await;
+        let _ = TransmissionType::InvalidTransmission
+            .wrap_into_transmission()
+            .send(stream)
+            .await;
         return;
     }
     let message = t_msg.to_message(props.uid);
@@ -325,7 +331,18 @@ async fn handle_get_server(
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    
+    let members_fut = conn.get_server_members(server_id);
+    let channels_fut = conn.get_server_channels(server_id);
+    let (members, channels) = join!(members_fut, channels_fut);
+    let data = ServerInfoData {
+        users: members.unwrap_or(vec![]),
+        channels: channels.unwrap_or(vec![]),
+    };
+
+    let _ = TransmissionType::ServerInfo(data)
+        .wrap_into_transmission()
+        .send(stream)
+        .await;
 }
 
 #[derive(Debug)]
@@ -362,7 +379,7 @@ async fn handle_transmission(
         }
         TransmissionType::GetServer(server_id) => {
             handle_get_server(server_id, props, conn, stream).await;
-        },
+        }
 
         TransmissionType::CreateUser(x) => {
             let err = create_user(conn, x).await;
@@ -381,6 +398,7 @@ async fn handle_transmission(
                 .send(stream)
                 .await;
         }
+        TransmissionType::GetUserServers => {}
 
         //invalid types from client
         TransmissionType::InvalidTransmission => {
@@ -400,7 +418,10 @@ async fn handle_transmission(
         }
         TransmissionType::ServerInfo(_) => {
             let _ = Transmission::invalid().send(stream).await;
-        },
+        }
+        TransmissionType::UserServers(_) => {
+            let _ = Transmission::invalid().send(stream).await;
+        }
     }
 }
 
@@ -414,7 +435,14 @@ async fn fetch_new_messages(
     }
 
     if matches!(props.last_sent_timestamp, None) {
-        handle_get_channel(props.listening_server.unwrap(), props.listening_channel.unwrap(), props, conn, stream).await;
+        handle_get_channel(
+            props.listening_server.unwrap(),
+            props.listening_channel.unwrap(),
+            props,
+            conn,
+            stream,
+        )
+        .await;
         return;
     }
 
@@ -459,7 +487,7 @@ async fn fetch_new_messages(
     }
 }
 
-//https://stackoverflow.com/questions/77780189/how-to-detect-rust-rocket-ws-client-disconnected-from-websocket
+//with thanks to this issue I found online: https://stackoverflow.com/questions/77780189/how-to-detect-rust-rocket-ws-client-disconnected-from-websocket
 #[get("/ws")]
 pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> {
     // use rocket::futures::{SinkExt, StreamExt};

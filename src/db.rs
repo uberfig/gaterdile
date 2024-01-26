@@ -3,7 +3,7 @@ use argon2::{
     Argon2,
 };
 // use chrono::NaiveDateTime;
-use crate::schema::schema;
+use crate::schema::schema::{self, channels, server_members};
 use rocket::serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -103,6 +103,21 @@ pub struct Message {
     pub text: String,
     // pub emoji: Option<Vec<u8>>,
     pub timestamp: i64,
+}
+
+#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
+#[diesel(table_name = schema::server_members)]
+pub struct ServerMember {
+    pub server_id: i32,
+    pub userid: i32,
+}
+
+#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
+#[diesel(table_name = schema::channels)]
+pub struct Channel {
+    pub id: Option<i32>,
+    pub server: i32,
+    pub name: String,
 }
 
 #[database("diesel")]
@@ -283,6 +298,52 @@ impl DbConn {
                     .order(messages::dsl::timestamp.asc())
                     .filter(messages::dsl::id.ne(id))
                     .load::<Message>(conn)
+            })
+            .await;
+
+        val
+    }
+
+    pub async fn get_server_members(
+        &self,
+        server_id: i32,
+    ) -> Result<Vec<ServerMember>, diesel::result::Error> {
+        let val = self
+            .run(move |conn| {
+                server_members::dsl::server_members
+                    .filter(server_members::dsl::server_id.eq(server_id))
+                    .load::<ServerMember>(conn)
+            })
+            .await;
+
+        val
+    }
+
+    //gets all servers a user is a part of
+    pub async fn get_user_servers(
+        &self,
+        uid: i32,
+    ) -> Result<Vec<ServerMember>, diesel::result::Error> {
+        let val = self
+            .run(move |conn| {
+                server_members::dsl::server_members
+                    .filter(server_members::dsl::userid.eq(uid))
+                    .load::<ServerMember>(conn)
+            })
+            .await;
+
+        val
+    }
+
+    pub async fn get_server_channels(
+        &self,
+        server_id: i32,
+    ) -> Result<Vec<Channel>, diesel::result::Error> {
+        let val = self
+            .run(move |conn| {
+                channels::dsl::channels
+                    .filter(channels::dsl::server.eq(server_id))
+                    .load::<Channel>(conn)
             })
             .await;
 
