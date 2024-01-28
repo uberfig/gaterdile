@@ -6,9 +6,10 @@ extern crate rocket;
 
 use std::time::Duration;
 
+use gaterdile::transmission::{TransmissionMessage, TransmissionType, Transmission, ServerInfoData};
 //
 // use diesel::date_time_expr;
-use rocket::futures::SinkExt;
+// use rocket::futures::SinkExt;
 use rocket::tokio::time::interval;
 use rocket::tokio::{self, join};
 
@@ -76,16 +77,7 @@ async fn auth_user(conn: &DbConn, user: UserAuth) -> AuthErr {
     return User::auth(user, conn).await;
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct NewMessage {
-    text: String,
-}
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-struct React {
-    reaction: String,
-    message_id: i32,
-}
 
 // #[derive(Debug, Deserialize, Serialize)]
 // struct Channel {
@@ -99,152 +91,23 @@ struct React {
 //     chanels: Vec<Channel>,
 // }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-struct ChannelInfo {
-    messages: Vec<Message>,
-}
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TransmissionMessage {
-    server: i32,
-    channel: i32,
-    reply: Option<i32>,
-    text: String,
-}
 
-pub struct content {
-    contype: String,
-    data: message_contents,
-}
-pub enum message_contents {
-    text(String),
-    emoji(),
-    mention(),
-}
 
-impl TransmissionMessage {
-    fn to_message(&self, uid: i32) -> Message {
-        use std::time::SystemTime;
-        Message {
-            id: None,
-            sender: uid,
-            server: self.server,
-            channel: self.channel,
-            reply: self.reply,
-            text: self.text.clone(),
-            timestamp: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as i64,
-        }
-    }
-}
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-struct UnameMap {
-    id: i32,
-    username: String,
-}
+// #[derive(Debug, Deserialize, Serialize, Clone)]
+// struct UnameMap {
+//     id: i32,
+//     username: String,
+// }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-struct ChannelMap {
-    id: i32,
-    name: String,
-}
+// #[derive(Debug, Deserialize, Serialize, Clone)]
+// struct ChannelMap {
+//     id: i32,
+//     name: String,
+// }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-struct ServerInfoData {
-    users: Vec<ServerMember>,
-    channels: Vec<Channel>,
-}
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-enum TransmissionType {
-    SendMessage(TransmissionMessage),
-    Reaction(React),
-    Auth(UserAuth),
-    GetServer(i32),       //requests to get server info
-    GetChannel(i32, i32), //server, channel gets the channels recent messages
-    CreateUser(UserAuth),
-    GetUserServers,
-    JoinServer(i32),
-    //from server only:
-    InvalidTransmission,
-    NewMessages(Vec<Message>),
-    RequestAuth,
-    AuthResult(AuthErr),
-    CreateUserResult(InsertError),
-    ServerInfo(ServerInfoData),
-    UserServers(Vec<ServerMember>),
-    JoinServerResult(JoinServerResult),
-}
-
-impl std::fmt::Display for TransmissionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            TransmissionType::NewMessages(_) => write!(f, "NewMessages"),
-            TransmissionType::SendMessage(_) => write!(f, "SendMessage"),
-            TransmissionType::Reaction(_) => write!(f, "Reaction"),
-            TransmissionType::RequestAuth => write!(f, "RequestAuth"),
-            TransmissionType::Auth(_) => write!(f, "Auth"),
-            TransmissionType::AuthResult(_) => write!(f, "AuthResult"),
-            TransmissionType::GetServer(_) => write!(f, "GetServer"),
-            TransmissionType::GetChannel(..) => write!(f, "GetChannel"),
-            TransmissionType::CreateUser(_) => write!(f, "CreateUser"),
-            TransmissionType::InvalidTransmission => write!(f, "InvalidTransmission"),
-            TransmissionType::CreateUserResult(_) => write!(f, "CreateUserResult"),
-            TransmissionType::ServerInfo(_) => write!(f, "ServerInfo"),
-            TransmissionType::GetUserServers => write!(f, "GetUserServers"),
-            TransmissionType::UserServers(_) => write!(f, "UserServers"),
-            TransmissionType::JoinServer(_) => write!(f, "JoinServer"),
-            TransmissionType::JoinServerResult(_) => write!(f, "JoinServerResult"),
-        }
-    }
-}
-
-impl TransmissionType {
-    pub fn wrap_into_transmission(self) -> Transmission {
-        let name = self.to_string();
-        Transmission {
-            data: self,
-            transmission_type: name,
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct Transmission {
-    data: TransmissionType,
-    transmission_type: String,
-}
-
-impl Transmission {
-    pub fn stringify(&self) -> String {
-        serde_json::to_string(&self).unwrap()
-    }
-    pub fn parse(val: &str) -> Result<Self, ()> {
-        let a = serde_json::from_str::<Transmission>(val);
-        match a {
-            Ok(x) => return Result::Ok(x),
-            Err(_x) => return Result::Err(()),
-        }
-    }
-    pub fn invalid() -> Transmission {
-        Transmission {
-            data: TransmissionType::InvalidTransmission,
-            transmission_type: TransmissionType::InvalidTransmission.to_string(),
-        }
-    }
-    pub async fn send(
-        &self,
-        stream: &mut ws::stream::DuplexStream,
-    ) -> Result<(), ws::result::Error> {
-        let _a = stream
-            .send(rocket_ws::Message::Text(self.stringify()))
-            .await;
-        _a
-    }
-}
 
 async fn handle_send_message(
     t_msg: TransmissionMessage,
