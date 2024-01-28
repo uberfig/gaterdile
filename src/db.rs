@@ -37,12 +37,12 @@ pub struct User {
     password: String,
 }
 
-#[derive(Deserialize, Queryable, Insertable, Debug)]
-#[diesel(table_name = schema::usernames)]
-pub struct UsernameMap {
-    pub userid: i32,
-    pub username: String,
-}
+// #[derive(Deserialize, Queryable, Insertable, Debug)]
+// #[diesel(table_name = schema::usernames)]
+// pub struct UsernameMap {
+//     pub userid: i32,
+//     pub username: String,
+// }
 
 impl User {
     pub async fn insert(new_user: UserAuth, conn: &DbConn) -> InsertError {
@@ -147,46 +147,31 @@ use schema::{
 
 impl DbConn {
     pub async fn get_user_by_id(&self, id: i32) -> Result<User, Error> {
-        let form: User = self
+        let user: User = self
             .run(move |conn| users::table.filter(users::id.eq(id)).first(conn))
             .await?;
-        Ok(form)
+        Ok(user)
     }
 
     pub async fn get_user_by_name(&self, name: String) -> Result<User, Error> {
-        let form: User = self
+        let user: User = self
             .run(move |conn| users::table.filter(users::username.eq(name)).first(conn))
             .await?;
-        Ok(form)
+        Ok(user)
     }
 
-    pub async fn get_user_id(&self, name: String) -> Result<UsernameMap, Error> {
-        let form = self
+    pub async fn get_user_name(&self, id: i32) -> Result<String, Error> {
+        let user: User = self
             .run(move |conn| {
-                schema::usernames::table
-                    .filter(schema::usernames::username.eq(name))
+                schema::users::table
+                    .filter(schema::users::id.eq(id))
                     .first(conn)
             })
             .await?;
-        Ok(form)
-        // return form;
-    }
-
-    pub async fn get_user_name(&self, id: i32) -> Result<UsernameMap, Error> {
-        let form = self
-            .run(move |conn| {
-                schema::usernames::table
-                    .filter(schema::usernames::userid.eq(id))
-                    .first(conn)
-            })
-            .await?;
-        Ok(form)
-
-        // return form;
+        Ok(user.username)
     }
 
     pub async fn insert_user(&self, user: User) -> Result<usize, Error> {
-        let username = user.username.clone();
 
         let e = self
             .run(move |c| {
@@ -197,39 +182,11 @@ impl DbConn {
             })
             .await;
 
-        let id;
-        match e {
-            Ok(x) => id = x,
-            Err(x) => return Err(x),
-        }
-        // let a = Ok(e);
-
-        let uname_map = UsernameMap {
-            userid: id as i32,
-            username,
-        };
-
-        let _err2 = self
-            .run(move |d| {
-                let a = diesel::insert_into(schema::usernames::table)
-                    .values(uname_map)
-                    .execute(d);
-                a
-            })
-            .await;
-        match _err2 {
-            Ok(x) => {},
-            Err(x) => {
-                dbg!(x);
-            },
-        }
-        // dbg!(_err2);
-
         return e;
     }
 
     pub async fn has_user(&self, name: String) -> bool {
-        let e = self.get_user_id(name).await;
+        let e = self.get_user_by_name(name).await;
         match e {
             Ok(_) => return true,
             Err(_) => return false,
@@ -360,9 +317,8 @@ impl DbConn {
             Ok(y) => {
                 for member in y {
                     if matches!(member.nickname, None) {
-                        let unamemap = self.get_user_name(member.userid).await;
-                        dbg!(&unamemap);
-                        member.nickname = Some(unamemap.unwrap_or(UsernameMap { userid: member.userid, username: "refresh to load".to_string() }).username);
+                        let uname = self.get_user_name(member.userid).await;
+                        member.nickname = Some(uname.unwrap_or("unable to fetch".to_string()));
                     }
                 }
             },

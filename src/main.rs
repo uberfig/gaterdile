@@ -495,7 +495,7 @@ async fn fetch_new_messages(
                                 .await;
                         }
                         None => {
-                            println!("no new messages")
+                            // println!("no new messages")
                         }
                     }
                 }

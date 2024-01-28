@@ -57,12 +57,12 @@ pub mod schema {
             roleid  -> Nullable<Integer>
         }
     }
-    table! {
-        usernames (userid) {
-            userid 	-> Integer,
-            username-> Text,
-        }
-    }
+    // table! {
+    //     usernames (userid) {
+    //         userid 	-> Integer,
+    //         username-> Text,
+    //     }
+    // }
     table! {
         reactions (id) {
             id -> Integer,
