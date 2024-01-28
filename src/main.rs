@@ -7,9 +7,7 @@ extern crate rocket;
 use std::time::Duration;
 
 use gaterdile::transmission::{TransmissionMessage, TransmissionType, Transmission, ServerInfoData};
-//
-// use diesel::date_time_expr;
-// use rocket::futures::SinkExt;
+
 use rocket::tokio::time::interval;
 use rocket::tokio::{self, join};
 
@@ -22,21 +20,15 @@ use rocket::{
     // response::status,
     // response::{Flash, Redirect},
     // serde::json::{self, Json},
-    serde::{Deserialize, Serialize},
+    // serde::{Deserialize, Serialize},
     // time::{OffsetDateTime, PrimitiveDateTime},
     // tokio::time::{sleep, Duration},
     Build,
     Rocket,
 };
 
-// use argon2::{
-//     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
-//     Argon2,
-// };
-
-use gaterdile::db::{AuthErr, Channel, DbConn, InsertError, JoinServerResult, Message, ServerMember, User, UserAuth};
+use gaterdile::db::{AuthErr, DbConn, InsertError, ServerMember, User, UserAuth};
 use rocket_ws as ws;
-// use serde::ser;
 
 async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
@@ -55,59 +47,20 @@ async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
 }
 
-// #[post("/signup", data = "<new_user>")]
 async fn create_user(conn: &DbConn, user: UserAuth) -> InsertError {
-    // let user = new_user.into_inner();
     if user.username.is_empty() {
         return InsertError::InvalidUsername;
     }
-
     let err = User::insert(user, conn).await;
-
     return err;
 }
 
-// #[post("/login", data = "<user>")]
 async fn auth_user(conn: &DbConn, user: UserAuth) -> AuthErr {
-    // let user = user.into_inner();
-
     if user.username.is_empty() {
         return AuthErr::InvalidUsername;
     }
     return User::auth(user, conn).await;
 }
-
-
-
-// #[derive(Debug, Deserialize, Serialize)]
-// struct Channel {
-//     id: i32,
-//     name: String,
-// }
-
-// #[derive(Debug, Deserialize, Serialize)]
-// struct ServerInfo {
-//     id: i32,
-//     chanels: Vec<Channel>,
-// }
-
-
-
-
-
-// #[derive(Debug, Deserialize, Serialize, Clone)]
-// struct UnameMap {
-//     id: i32,
-//     username: String,
-// }
-
-// #[derive(Debug, Deserialize, Serialize, Clone)]
-// struct ChannelMap {
-//     id: i32,
-//     name: String,
-// }
-
-
 
 async fn handle_send_message(
     t_msg: TransmissionMessage,
@@ -244,19 +197,18 @@ async fn handle_transmission(
         TransmissionType::SendMessage(t_msg) => {
             handle_send_message(t_msg, props, conn, stream).await;
         }
-        TransmissionType::Reaction(_) => todo!(),
-
+        TransmissionType::Reaction(_) => {
+            todo!()
+        },
         TransmissionType::Auth(user) => {
             handle_auth(user, props, conn, stream).await;
         }
-
         TransmissionType::GetChannel(server_id, channel_id) => {
             handle_get_channel(server_id, channel_id, props, conn, stream).await;
         }
         TransmissionType::GetServer(server_id) => {
             handle_get_server(server_id, conn, stream).await;
         }
-
         TransmissionType::CreateUser(x) => {
             let err = create_user(conn, x).await;
             match err {
@@ -274,12 +226,14 @@ async fn handle_transmission(
                 .send(stream)
                 .await;
         }
-        TransmissionType::GetUserServers => {}
+        TransmissionType::GetUserServers => {
+            todo!()
+        }
         TransmissionType::JoinServer(server_id) => {
             handle_join_server(server_id, props.uid, conn, stream).await;
         },
 
-        //invalid types from client
+        //-----------------------------invalid types from client------------------------------------
         TransmissionType::InvalidTransmission => {
             let _ = Transmission::invalid().send(stream).await;
         }
