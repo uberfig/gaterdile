@@ -70,7 +70,11 @@ impl User {
         let e = conn.insert_user(t).await;
         match e {
             Ok(x) => return InsertError::Success(x),
-            Err(_x) => return InsertError::DbError,
+            Err(_x) => {
+                println!("insert");
+                dbg!(_x);
+                return InsertError::DbError;
+            },
         }
     }
 
@@ -108,8 +112,10 @@ pub struct Message {
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
 #[diesel(table_name = schema::server_members)]
 pub struct ServerMember {
+    // pub id: Option<i32>,
     pub server_id: i32,
     pub userid: i32,
+    pub nickname: Option<String>,
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
@@ -118,6 +124,14 @@ pub struct Channel {
     pub id: Option<i32>,
     pub server: i32,
     pub name: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum JoinServerResult {
+    Success(i32),
+    AlreadyInServer,
+    NotAuthorised,
+    Failure,
 }
 
 #[database("diesel")]
@@ -158,6 +172,19 @@ impl DbConn {
         // return form;
     }
 
+    pub async fn get_user_name(&self, id: i32) -> Result<UsernameMap, Error> {
+        let form = self
+            .run(move |conn| {
+                schema::usernames::table
+                    .filter(schema::usernames::userid.eq(id))
+                    .first(conn)
+            })
+            .await?;
+        Ok(form)
+
+        // return form;
+    }
+
     pub async fn insert_user(&self, user: User) -> Result<usize, Error> {
         let username = user.username.clone();
 
@@ -168,12 +195,18 @@ impl DbConn {
                     .execute(c);
                 a
             })
-            .await?;
+            .await;
+
+        let id;
+        match e {
+            Ok(x) => id = x,
+            Err(x) => return Err(x),
+        }
         // let a = Ok(e);
 
         let uname_map = UsernameMap {
-            userid: e as i32,
-            username: username,
+            userid: id as i32,
+            username,
         };
 
         let _err2 = self
@@ -183,9 +216,16 @@ impl DbConn {
                     .execute(d);
                 a
             })
-            .await?;
+            .await;
+        match _err2 {
+            Ok(x) => {},
+            Err(x) => {
+                dbg!(x);
+            },
+        }
+        // dbg!(_err2);
 
-        return Ok(e);
+        return e;
     }
 
     pub async fn has_user(&self, name: String) -> bool {
@@ -308,13 +348,29 @@ impl DbConn {
         &self,
         server_id: i32,
     ) -> Result<Vec<ServerMember>, diesel::result::Error> {
-        let val = self
+        let mut val = self
             .run(move |conn| {
                 server_members::dsl::server_members
                     .filter(server_members::dsl::server_id.eq(server_id))
                     .load::<ServerMember>(conn)
             })
             .await;
+
+        match &mut val {
+            Ok(y) => {
+                for member in y {
+                    if matches!(member.nickname, None) {
+                        let unamemap = self.get_user_name(member.userid).await;
+                        dbg!(&unamemap);
+                        member.nickname = Some(unamemap.unwrap_or(UsernameMap { userid: member.userid, username: "refresh to load".to_string() }).username);
+                    }
+                }
+            },
+            Err(x) => {
+                println!("err in get server members");
+                dbg!(&x);
+            },
+        }
 
         val
     }
@@ -348,6 +404,25 @@ impl DbConn {
             .await;
 
         val
+    }
+
+    pub async fn join_server(&self, message: ServerMember) -> JoinServerResult {
+        let e = self
+            .run(move |c| {
+                let a = diesel::insert_into(schema::server_members::table)
+                    .values(message)
+                    .execute(c);
+                a
+            })
+            .await;
+        
+        match e {
+            Ok(x) => return JoinServerResult::Success(x as i32),
+            Err(x) => {
+                dbg!(x);
+                return  JoinServerResult::AlreadyInServer;
+            },
+        }
     }
 
     // pub async fn create_reaction(&self, server_id: i32, channel_id: i32) {

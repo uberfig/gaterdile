@@ -58,13 +58,13 @@ pub mod schema {
         }
     }
     table! {
-        usernames (username) {
+        usernames (userid) {
             userid 	-> Integer,
             username-> Text,
         }
     }
     table! {
-        reactions (messageid) {
+        reactions (id) {
             id -> Integer,
             userid 	-> Integer,
             messageid -> Integer,
@@ -72,9 +72,11 @@ pub mod schema {
         }
     }
     table! {
-        server_members (server_id) {
+        server_members (server_id, userid) {
+            // id  -> Nullable<Integer>,
             server_id -> Integer,
             userid  -> Integer,
+            nickname -> Nullable<Text>,
         }
     }
 }

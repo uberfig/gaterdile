@@ -41,5 +41,17 @@ CREATE TABLE messages (
 	timestamp	BIGINT
 );
 
+CREATE TABLE reactions (
+	id			INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
+	messageid	INTEGER NOT NULL,
+	userid		INTEGER NOT NULL,
+	emoji		INTEGER NOT NULL
+);
 
+CREATE TABLE server_members (
+	id			INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
+	server_id		INTEGER NOT NULL,
+	userid			INTEGER NOT NULL,
+	nickname	TEXT
+);
 

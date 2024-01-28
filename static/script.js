@@ -2,6 +2,7 @@ let authenticated = false;
 let uid = -1;
 let subscribed_server = -1;
 let subscribed_channel = -1;
+let uname_map = {};
 
 class Reaction {
 	reaction;
@@ -66,6 +67,18 @@ class TransmitMessage {
 	}
 }
 
+class GetServer {
+	GetServer;
+	constructor(server_id) {
+		this.GetServer = server_id;
+	}
+}
+
+async function get_server(serverConn, server_id) {
+	var out = new Transmission("GetServer", new GetServer(server_id));
+	serverConn.send(JSON.stringify(out));
+}
+
 async function send_clicked() {
 	var input = document.getElementById("message_input").value;
 	document.getElementById("message_input").value = "";
@@ -107,12 +120,24 @@ async function get_channel(serverConn, server, channel) {
 	serverConn.send(JSON.stringify(val));
 }
 
+class JoinServer {
+	JoinServer;
+	constructor(id) {
+		this.JoinServer = id;
+	}
+}
+async function join_server(serverConn, server) {
+	const val = new Transmission("JoinServer", new JoinServer(server));
+	serverConn.send(JSON.stringify(val));
+}
+
 function create_message_element(message) {
 	const parent = document.createElement("div");
 	parent.classList.add("message");
 
 	const uname_ele = document.createElement("p");
-	const uname = document.createTextNode(message.sender + ":");
+	let name = uname_map[message.sender];
+	const uname = document.createTextNode(name + ":");
 	uname_ele.appendChild(uname);
 	uname_ele.style.color = "rgb(147, 240, 167)"
 	uname_ele.classList = "uname";
@@ -206,6 +231,8 @@ async function handle_AuthResult(serverConn, event) {
 	if (event.data.AuthResult.hasOwnProperty("Success")) {
 		console.log("Login Success");
 		auth_success(event.data.AuthResult.Success);
+		join_server(serverConn, 0);
+		get_server(serverConn, 0);
 		get_channel(serverConn, 0, 0);
 	} else {
 		auth_failure(event.data.AuthResult);
@@ -213,7 +240,12 @@ async function handle_AuthResult(serverConn, event) {
 }
 
 async function handle_serverinfo(event) {
-	console.log(event);
+	event = event.ServerInfo;
+	for (let index = 0; index < event.users.length; index++) {
+		console.log(event.users[index].nickname);
+		uname_map[event.users[index].userid] = event.users[index].nickname;
+	}
+	console.log(uname_map);
 }
 
 async function handle_event(serverConn, event) {

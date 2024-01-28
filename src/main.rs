@@ -33,7 +33,7 @@ use rocket::{
 //     Argon2,
 // };
 
-use gaterdile::db::{AuthErr, Channel, DbConn, InsertError, Message, ServerMember, User, UserAuth};
+use gaterdile::db::{AuthErr, Channel, DbConn, InsertError, JoinServerResult, Message, ServerMember, User, UserAuth};
 use rocket_ws as ws;
 // use serde::ser;
 
@@ -176,7 +176,7 @@ enum TransmissionType {
     CreateUserResult(InsertError),
     ServerInfo(ServerInfoData),
     UserServers(Vec<ServerMember>),
-    JoinServerResult(),
+    JoinServerResult(JoinServerResult),
 }
 
 impl std::fmt::Display for TransmissionType {
@@ -196,8 +196,8 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::ServerInfo(_) => write!(f, "ServerInfo"),
             TransmissionType::GetUserServers => write!(f, "GetUserServers"),
             TransmissionType::UserServers(_) => write!(f, "UserServers"),
-            TransmissionType::JoinServer(_) => todo!(),
-            TransmissionType::JoinServerResult() => todo!(),
+            TransmissionType::JoinServer(_) => write!(f, "JoinServer"),
+            TransmissionType::JoinServerResult(_) => write!(f, "JoinServerResult"),
         }
     }
 }
@@ -348,6 +348,16 @@ async fn handle_get_server(
         .await;
 }
 
+async fn handle_join_server(
+    server_id: i32,
+    userid: i32,
+    conn: &DbConn,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    let a = conn.join_server(ServerMember { /*id: None,*/ server_id: server_id, userid: userid, nickname: None }).await;
+    let _ = TransmissionType::JoinServerResult(a).wrap_into_transmission().send(stream).await;
+}
+
 #[derive(Debug)]
 struct ConnectionProps {
     uid: i32,
@@ -402,6 +412,9 @@ async fn handle_transmission(
                 .await;
         }
         TransmissionType::GetUserServers => {}
+        TransmissionType::JoinServer(server_id) => {
+            handle_join_server(server_id, props.uid, conn, stream).await;
+        },
 
         //invalid types from client
         TransmissionType::InvalidTransmission => {
@@ -425,8 +438,9 @@ async fn handle_transmission(
         TransmissionType::UserServers(_) => {
             let _ = Transmission::invalid().send(stream).await;
         }
-        TransmissionType::JoinServer(_) => todo!(),
-        TransmissionType::JoinServerResult() => todo!(),
+        TransmissionType::JoinServerResult(_) => {
+            let _ = Transmission::invalid().send(stream).await;
+        },
     }
 }
 
@@ -506,7 +520,7 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
 			tokio::spawn(async move {
 				let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
 
-                let _ = TransmissionType::GetChannel(1,2).wrap_into_transmission().send(&mut stream).await;
+                let _ = TransmissionType::JoinServer(0).wrap_into_transmission().send(&mut stream).await;
 				loop {
 					tokio::select! {
 						_ = interval.tick() => {
