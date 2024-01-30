@@ -3,6 +3,7 @@ let uid = -1;
 let subscribed_server = -1;
 let subscribed_channel = -1;
 let uname_map = {};
+let oldest_message = null;
 
 class Reaction {
 	reaction;
@@ -174,6 +175,10 @@ function checkVisible(elm) {
 function handle_NewMessage(message) {
 	const chat = document.getElementById("chat");
 
+	if (oldest_message == null && message.NewMessages.length < 0) {
+		oldest_message = message.NewMessages[0].id;
+	}
+
 	for (let i = 0; i < message.NewMessages.length; i++) {
 		let para = create_message_element(message.NewMessages[i]);
 		if (chat.lastChild != null && chat.lastChild.dataset != null) {
@@ -190,6 +195,25 @@ function handle_NewMessage(message) {
 			para.scrollIntoView();
 		}
 
+	}
+}
+
+function handle_PriorMessages(message) {
+	const chat = document.getElementById("chat");
+
+	for (let i = message.PriorMessages.length -1; i >= 0; i--) {
+		oldest_message = message.PriorMessages[i].id;
+		let para = create_message_element(message.PriorMessages[i]);
+		if (chat.firstChild != null && chat.firstChild.dataset != null) {
+
+			if (chat.firstChild.dataset.sender == message.PriorMessages[i].sender) {
+				let below = chat.firstChild.querySelector(".uname");
+				below.style.display = "none";
+				para.style.paddingBottom = "0px"
+			}
+
+		}
+		chat.prepend(para);
 	}
 }
 
@@ -268,6 +292,9 @@ async function handle_event(serverConn, event) {
 		case "ServerInfo":
 			handle_serverinfo(event.data);
 			break;
+		case "PriorMessages":
+			handle_PriorMessages(event.data);
+			break;
 		case "UserServers":
 
 			break;
@@ -345,11 +372,30 @@ function prevent(evt) {
 	}
 }
 
+function check_scroll() {
+	console.log("scrolling");
+	if(document.getElementById("chat").scrollY() === 0){
+		alert("top");
+	}
+}
+
 // const input = document.querySelector("input");
 function initEvents() {
 	console.log("init");
 	document.getElementById("message_input").addEventListener("keydown", text_input_event, false);
 	document.getElementById("message_input").addEventListener("keypress", prevent, false);
+	// document.getElementById("chat").scroll(function(){
+	// 	if($(this).scrollTop() === 0){
+	// 		 alert("top");   
+	// 	}
+	// });
+	document.getElementById("chat").addEventListener("scroll", check_scroll);
 }
+
+// $("#contend").scroll(function(){
+//     if($(this).scrollTop() === 0){
+//          alert("top");   
+//     }
+// });
 
 window.onload = initEvents;

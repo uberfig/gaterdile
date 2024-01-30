@@ -6,7 +6,9 @@ extern crate rocket;
 
 use std::time::Duration;
 
-use gaterdile::transmission::{TransmissionMessage, TransmissionType, Transmission, ServerInfoData};
+use gaterdile::transmission::{
+    ServerInfoData, Transmission, TransmissionMessage, TransmissionType,
+};
 
 use rocket::tokio::time::interval;
 use rocket::tokio::{self, join};
@@ -145,11 +147,59 @@ async fn handle_get_channel(
     }
 }
 
-async fn handle_get_server(
+async fn handle_get_prior(
     server_id: i32,
+    channel_id: i32,
+    props: &mut ConnectionProps,
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
+    last_msg: i32,
 ) {
+    let msg = conn.get_msg_by_id(last_msg).await;
+
+    let message;
+    match msg {
+        Ok(x) => message = x,
+        Err(_) => {
+            let _ = TransmissionType::InvalidTransmission
+                .wrap_into_transmission()
+                .send(stream)
+                .await;
+            return;
+        }
+    }
+
+    let a = conn
+        .get_messages_prior(server_id, channel_id, message.timestamp, last_msg, 40)
+        .await;
+    match a {
+        Ok(x) => {
+            props.listening_channel = Some(channel_id);
+            props.listening_server = Some(server_id);
+            let newlast = x.get(x.len().wrapping_sub(1));
+            match newlast {
+                Some(y) => {
+                    props.last_sent_timestamp = Some(y.timestamp);
+                    props.last_sent_id = Some(y.id.unwrap());
+
+                    println!("newlast id: ");
+                    dbg!(y.id);
+                }
+                None => {
+                    println!("no messages")
+                }
+            }
+
+            let _ = TransmissionType::NewMessages(x)
+                .wrap_into_transmission()
+                .send(stream)
+                .await;
+        }
+        Err(_) => {}
+    }
+}
+
+async fn handle_get_server(server_id: i32, conn: &DbConn, stream: &mut ws::stream::DuplexStream) {
     let members_fut = conn.get_server_members(server_id);
     let channels_fut = conn.get_server_channels(server_id);
     let (members, channels) = join!(members_fut, channels_fut);
@@ -170,8 +220,17 @@ async fn handle_join_server(
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let a = conn.join_server(ServerMember { /*id: None,*/ server_id: server_id, userid: userid, nickname: None }).await;
-    let _ = TransmissionType::JoinServerResult(a).wrap_into_transmission().send(stream).await;
+    let a = conn
+        .join_server(ServerMember {
+            /*id: None,*/ server_id: server_id,
+            userid: userid,
+            nickname: None,
+        })
+        .await;
+    let _ = TransmissionType::JoinServerResult(a)
+        .wrap_into_transmission()
+        .send(stream)
+        .await;
 }
 
 #[derive(Debug)]
@@ -199,7 +258,7 @@ async fn handle_transmission(
         }
         TransmissionType::Reaction(_) => {
             todo!()
-        },
+        }
         TransmissionType::Auth(user) => {
             handle_auth(user, props, conn, stream).await;
         }
@@ -231,7 +290,18 @@ async fn handle_transmission(
         }
         TransmissionType::JoinServer(server_id) => {
             handle_join_server(server_id, props.uid, conn, stream).await;
-        },
+        }
+        TransmissionType::GetPriorMessages(since) => {
+            handle_get_prior(
+                props.listening_server.unwrap_or(-1),
+                props.listening_channel.unwrap_or(-1),
+                props,
+                conn,
+                stream,
+                since,
+            )
+            .await
+        }
 
         //-----------------------------invalid types from client------------------------------------
         TransmissionType::InvalidTransmission => {
@@ -257,7 +327,10 @@ async fn handle_transmission(
         }
         TransmissionType::JoinServerResult(_) => {
             let _ = Transmission::invalid().send(stream).await;
-        },
+        }
+        TransmissionType::PriorMessages(_) => {
+            let _ = Transmission::invalid().send(stream).await;
+        }
     }
 }
 

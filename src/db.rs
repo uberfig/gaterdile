@@ -74,7 +74,7 @@ impl User {
                 println!("insert");
                 dbg!(_x);
                 return InsertError::DbError;
-            },
+            }
         }
     }
 
@@ -172,7 +172,6 @@ impl DbConn {
     }
 
     pub async fn insert_user(&self, user: User) -> Result<usize, Error> {
-
         let e = self
             .run(move |c| {
                 let a = diesel::insert_into(schema::users::table)
@@ -191,6 +190,13 @@ impl DbConn {
             Ok(_) => return true,
             Err(_) => return false,
         }
+    }
+
+    pub async fn get_msg_by_id(&self, id: i32) -> Result<Message, Error> {
+        let message: Message = self
+            .run(move |conn| messages::table.filter(messages::id.eq(id)).first(conn))
+            .await?;
+        Ok(message)
     }
 
     pub async fn send_message(&self, message: Message) -> Result<usize, diesel::result::Error> {
@@ -221,15 +227,49 @@ impl DbConn {
                     // .order(messages::dsl::id.desc())
                     // .order(messages::dsl::timestamp.asc())
                     .load::<Message>(conn)
-                    // .order(messages::dsl::timestamp.asc())
+                // .order(messages::dsl::timestamp.asc())
             })
             .await;
 
         match &mut val {
             Ok(x) => {
                 x.sort_unstable_by_key(|y| y.timestamp);
-            },
-            Err(_) => {},
+            }
+            Err(_) => {}
+        }
+
+        val
+    }
+
+    pub async fn get_messages_prior(
+        &self,
+        server_id: i32,
+        channel_id: i32,
+        prior_to: i64,
+        last_msg: i32,
+        amount: i64,
+    ) -> Result<Vec<Message>, Error> {
+        let mut val = self
+            .run(move |conn| {
+                messages::dsl::messages
+                    .filter(messages::dsl::server.eq(server_id))
+                    .filter(messages::dsl::channel.eq(channel_id))
+                    .filter(messages::dsl::timestamp.le(prior_to))
+                    .filter(messages::dsl::id.ne(last_msg))
+                    .order(messages::dsl::timestamp.asc())
+                    .limit(amount)
+                    // .order(messages::dsl::id.desc())
+                    // .order(messages::dsl::timestamp.asc())
+                    .load::<Message>(conn)
+                // .order(messages::dsl::timestamp.asc())
+            })
+            .await;
+
+        match &mut val {
+            Ok(x) => {
+                x.sort_unstable_by_key(|y| y.timestamp);
+            }
+            Err(_) => {}
         }
 
         val
@@ -329,11 +369,11 @@ impl DbConn {
                         member.nickname = Some(uname.unwrap_or("unable to fetch".to_string()));
                     }
                 }
-            },
+            }
             Err(x) => {
                 println!("err in get server members");
                 dbg!(&x);
-            },
+            }
         }
 
         val
@@ -379,13 +419,13 @@ impl DbConn {
                 a
             })
             .await;
-        
+
         match e {
             Ok(x) => return JoinServerResult::Success(x as i32),
             Err(x) => {
                 dbg!(x);
-                return  JoinServerResult::AlreadyInServer;
-            },
+                return JoinServerResult::AlreadyInServer;
+            }
         }
     }
 

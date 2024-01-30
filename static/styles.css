@@ -8,6 +8,12 @@
     height: 3em;
 }
 
+.loader {
+    background-color: red;
+    height: 3em;
+    flex-shrink: 0;
+}
+
 .chat {
     height: calc(100vh - 8em);
     background-color: rgb(27, 30, 53);

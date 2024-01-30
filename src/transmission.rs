@@ -1,5 +1,8 @@
-use rocket::{serde::{Deserialize, Serialize}, futures::SinkExt};
-use crate::db::{Message, JoinServerResult, ServerMember, InsertError, AuthErr, UserAuth, Channel};
+use crate::db::{AuthErr, Channel, InsertError, JoinServerResult, Message, ServerMember, UserAuth};
+use rocket::{
+    futures::SinkExt,
+    serde::{Deserialize, Serialize},
+};
 use rocket_ws as ws;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -78,6 +81,7 @@ pub enum TransmissionType {
     CreateUser(UserAuth),
     GetUserServers,
     JoinServer(i32),
+    GetPriorMessages(i32),
     //from server only:
     InvalidTransmission,
     NewMessages(Vec<Message>),
@@ -87,6 +91,7 @@ pub enum TransmissionType {
     ServerInfo(ServerInfoData),
     UserServers(Vec<ServerMember>),
     JoinServerResult(JoinServerResult),
+    PriorMessages(Vec<Message>),
 }
 
 impl std::fmt::Display for TransmissionType {
@@ -108,6 +113,8 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::UserServers(_) => write!(f, "UserServers"),
             TransmissionType::JoinServer(_) => write!(f, "JoinServer"),
             TransmissionType::JoinServerResult(_) => write!(f, "JoinServerResult"),
+            TransmissionType::GetPriorMessages(_) => write!(f, "GetPriorMessages"),
+            TransmissionType::PriorMessages(_) => write!(f, "PriorMessages"),
         }
     }
 }
@@ -140,7 +147,10 @@ impl Transmission {
         }
     }
     pub fn invalid() -> Transmission {
-        Transmission { data: TransmissionType::InvalidTransmission, transmission_type: TransmissionType::InvalidTransmission.to_string() }
+        Transmission {
+            data: TransmissionType::InvalidTransmission,
+            transmission_type: TransmissionType::InvalidTransmission.to_string(),
+        }
     }
     pub async fn send(
         &self,
