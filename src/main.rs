@@ -117,7 +117,7 @@ async fn handle_get_channel(
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let a = conn.get_channel_messages(server_id, channel_id, 10).await;
+    let a = conn.get_channel_messages(server_id, channel_id, 40).await;
     match a {
         Ok(x) => {
             props.listening_channel = Some(channel_id);

@@ -211,7 +211,7 @@ impl DbConn {
         channel_id: i32,
         amount: i64,
     ) -> Result<Vec<Message>, Error> {
-        let val = self
+        let mut val = self
             .run(move |conn| {
                 messages::dsl::messages
                     .filter(messages::dsl::server.eq(server_id))
@@ -219,10 +219,18 @@ impl DbConn {
                     .order(messages::dsl::timestamp.desc())
                     .limit(amount)
                     // .order(messages::dsl::id.desc())
-                    .order(messages::dsl::timestamp.asc())
+                    // .order(messages::dsl::timestamp.asc())
                     .load::<Message>(conn)
+                    // .order(messages::dsl::timestamp.asc())
             })
             .await;
+
+        match &mut val {
+            Ok(x) => {
+                x.sort_unstable_by_key(|y| y.timestamp);
+            },
+            Err(_) => {},
+        }
 
         val
     }
