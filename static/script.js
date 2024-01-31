@@ -4,6 +4,7 @@ let subscribed_server = -1;
 let subscribed_channel = -1;
 let uname_map = {};
 let oldest_message = null;
+let loading = false;
 
 class Reaction {
 	reaction;
@@ -68,11 +69,23 @@ class TransmitMessage {
 	}
 }
 
+class GetPriorMessages {
+	GetPriorMessages;
+	constructor(id) {
+		this.GetPriorMessages = id;
+	}
+}
+
 class GetServer {
 	GetServer;
 	constructor(server_id) {
 		this.GetServer = server_id;
 	}
+}
+
+async function get_old_messages(serverConn) {
+	var out = new Transmission("GetPriorMessages", new GetPriorMessages(oldest_message));
+	serverConn.send(JSON.stringify(out));
 }
 
 async function get_server(serverConn, server_id) {
@@ -175,7 +188,7 @@ function checkVisible(elm) {
 function handle_NewMessage(message) {
 	const chat = document.getElementById("chat");
 
-	if (oldest_message == null && message.NewMessages.length < 0) {
+	if (oldest_message == null && message.NewMessages.length > 0) {
 		oldest_message = message.NewMessages[0].id;
 	}
 
@@ -200,6 +213,7 @@ function handle_NewMessage(message) {
 
 function handle_PriorMessages(message) {
 	const chat = document.getElementById("chat");
+	loading = false;
 
 	for (let i = message.PriorMessages.length -1; i >= 0; i--) {
 		oldest_message = message.PriorMessages[i].id;
@@ -215,6 +229,8 @@ function handle_PriorMessages(message) {
 		}
 		chat.prepend(para);
 	}
+
+	loading = false;
 }
 
 function prompt_auth() {
@@ -372,10 +388,12 @@ function prevent(evt) {
 	}
 }
 
-function check_scroll() {
+async function check_scroll() {
 	console.log("scrolling");
-	if(document.getElementById("chat").scrollY() === 0){
-		alert("top");
+	if (checkVisible(document.getElementById("loader")) && loading == false){
+		loading = true;
+		// alert("top");
+		get_old_messages(serverConn);
 	}
 }
 
@@ -389,7 +407,7 @@ function initEvents() {
 	// 		 alert("top");   
 	// 	}
 	// });
-	document.getElementById("chat").addEventListener("scroll", check_scroll);
+	// document.getElementById("chat").addEventListener("onscroll", check_scroll, false);
 }
 
 // $("#contend").scroll(function(){

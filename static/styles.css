@@ -9,8 +9,8 @@
 }
 
 .loader {
-    background-color: red;
-    height: 3em;
+    /* background-color: red; */
+    height: 1em;
     flex-shrink: 0;
 }
 

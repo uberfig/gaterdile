@@ -174,23 +174,7 @@ async fn handle_get_prior(
         .await;
     match a {
         Ok(x) => {
-            props.listening_channel = Some(channel_id);
-            props.listening_server = Some(server_id);
-            let newlast = x.get(x.len().wrapping_sub(1));
-            match newlast {
-                Some(y) => {
-                    props.last_sent_timestamp = Some(y.timestamp);
-                    props.last_sent_id = Some(y.id.unwrap());
-
-                    println!("newlast id: ");
-                    dbg!(y.id);
-                }
-                None => {
-                    println!("no messages")
-                }
-            }
-
-            let _ = TransmissionType::NewMessages(x)
+            let _ = TransmissionType::PriorMessages(x)
                 .wrap_into_transmission()
                 .send(stream)
                 .await;
