@@ -53,15 +53,15 @@ async fn create_user(conn: &DbConn, user: UserAuth) -> InsertError {
     if user.username.is_empty() {
         return InsertError::InvalidUsername;
     }
-    let err = User::insert(user, conn).await;
-    return err;
+    
+    User::insert(user, conn).await
 }
 
 async fn auth_user(conn: &DbConn, user: UserAuth) -> AuthErr {
     if user.username.is_empty() {
         return AuthErr::InvalidUsername;
     }
-    return User::auth(user, conn).await;
+    User::auth(user, conn).await
 }
 
 async fn handle_send_message(
@@ -91,7 +91,7 @@ async fn handle_auth(
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let auth = auth_user(&conn, user).await;
+    let auth = auth_user(conn, user).await;
     match auth {
         AuthErr::Success(x) => {
             props.authenticated = true;
@@ -120,46 +120,42 @@ async fn handle_get_channel(
     stream: &mut ws::stream::DuplexStream,
 ) {
     let a = conn.get_channel_messages(server_id, channel_id, 40).await;
-    match a {
-        Ok(x) => {
-            props.listening_channel = Some(channel_id);
-            props.listening_server = Some(server_id);
-            let newlast = x.get(x.len().wrapping_sub(1));
-            match newlast {
-                Some(y) => {
-                    props.last_sent_timestamp = Some(y.timestamp);
-                    props.last_sent_id = Some(y.id.unwrap());
 
-                    println!("newlast id: ");
-                    dbg!(y.id);
-                }
-                None => {
-                    println!("no messages")
-                }
-            }
-
-            let _ = TransmissionType::NewMessages(x)
-                .wrap_into_transmission()
-                .send(stream)
-                .await;
+    if let Ok(x) = a {
+        props.listening_channel = Some(channel_id);
+        props.listening_server = Some(server_id);
+        let newlast = x.get(x.len().wrapping_sub(1));
+        match newlast {
+        Some(y) => {
+        props.last_sent_timestamp = Some(y.timestamp);
+        props.last_sent_id = Some(y.id.unwrap());
+        
+        println!("newlast id: ");
+        dbg!(y.id);
         }
-        Err(_) => {}
-    }
+        None => {
+        println!("no messages")
+        }
+        }
+        
+        let _ = TransmissionType::NewMessages(x)
+        .wrap_into_transmission()
+        .send(stream)
+        .await;
+        }
 }
 
 async fn handle_get_prior(
     server_id: i32,
     channel_id: i32,
-    props: &mut ConnectionProps,
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
     last_msg: i32,
 ) {
     let msg = conn.get_msg_by_id(last_msg).await;
 
-    let message;
-    match msg {
-        Ok(x) => message = x,
+    let message= match msg {
+        Ok(x) => x,
         Err(_) => {
             let _ = TransmissionType::InvalidTransmission
                 .wrap_into_transmission()
@@ -167,19 +163,17 @@ async fn handle_get_prior(
                 .await;
             return;
         }
-    }
+    };
 
     let a = conn
         .get_messages_prior(server_id, channel_id, message.timestamp, last_msg, 40)
         .await;
-    match a {
-        Ok(x) => {
-            let _ = TransmissionType::PriorMessages(x)
-                .wrap_into_transmission()
-                .send(stream)
-                .await;
-        }
-        Err(_) => {}
+    
+    if let Ok(x) = a {
+        let _ = TransmissionType::PriorMessages(x)
+        .wrap_into_transmission()
+        .send(stream)
+        .await;
     }
 }
 
@@ -206,8 +200,8 @@ async fn handle_join_server(
 ) {
     let a = conn
         .join_server(ServerMember {
-            /*id: None,*/ server_id: server_id,
-            userid: userid,
+            server_id,
+            userid,
             nickname: None,
         })
         .await;
@@ -279,7 +273,6 @@ async fn handle_transmission(
             handle_get_prior(
                 props.listening_server.unwrap_or(-1),
                 props.listening_channel.unwrap_or(-1),
-                props,
                 conn,
                 stream,
                 since,
@@ -288,33 +281,18 @@ async fn handle_transmission(
         }
 
         //-----------------------------invalid types from client------------------------------------
-        TransmissionType::InvalidTransmission => {
+        TransmissionType::InvalidTransmission |
+        TransmissionType::NewMessages(_) |
+        TransmissionType::RequestAuth |
+        TransmissionType::AuthResult(_) |
+        TransmissionType::CreateUserResult(_) |
+        TransmissionType::ServerInfo(_) |
+        TransmissionType::UserServers(_) |
+        TransmissionType::JoinServerResult(_) |
+        TransmissionType::PriorMessages(_) |
+        TransmissionType::NoMorePrior => {
             let _ = Transmission::invalid().send(stream).await;
-        }
-        TransmissionType::NewMessages(_) => {
-            let _ = Transmission::invalid().send(stream).await;
-        }
-        TransmissionType::RequestAuth => {
-            let _ = Transmission::invalid().send(stream).await;
-        }
-        TransmissionType::AuthResult(_) => {
-            let _ = Transmission::invalid().send(stream).await;
-        }
-        TransmissionType::CreateUserResult(_) => {
-            let _ = Transmission::invalid().send(stream).await;
-        }
-        TransmissionType::ServerInfo(_) => {
-            let _ = Transmission::invalid().send(stream).await;
-        }
-        TransmissionType::UserServers(_) => {
-            let _ = Transmission::invalid().send(stream).await;
-        }
-        TransmissionType::JoinServerResult(_) => {
-            let _ = Transmission::invalid().send(stream).await;
-        }
-        TransmissionType::PriorMessages(_) => {
-            let _ = Transmission::invalid().send(stream).await;
-        }
+        },
     }
 }
 
@@ -323,11 +301,11 @@ async fn fetch_new_messages(
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    if matches!(props.listening_channel, None) || matches!(props.listening_server, None) {
+    if props.listening_channel.is_none() || props.listening_server.is_none() {
         return;
     }
 
-    if matches!(props.last_sent_timestamp, None) {
+    if props.last_sent_timestamp.is_none() {
         handle_get_channel(
             props.listening_server.unwrap(),
             props.listening_channel.unwrap(),

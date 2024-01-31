@@ -171,6 +171,7 @@ function create_message_element(message) {
 
 	parent.id = message.id
 	parent.dataset.sender = message.sender;
+	parent.dataset.timestamp = message.timestamp;
 
 	return parent;
 }
@@ -196,7 +197,7 @@ function handle_NewMessage(message) {
 		let para = create_message_element(message.NewMessages[i]);
 		if (chat.lastChild != null && chat.lastChild.dataset != null) {
 
-			if (chat.lastChild.dataset.sender == message.NewMessages[i].sender) {
+			if (chat.lastChild.dataset.sender == message.NewMessages[i].sender && message.NewMessages[i].timestamp - chat.lastChild.dataset.timestamp < 4000) {
 				let above = para.querySelector(".uname");
 				above.style.display = "none";
 				chat.lastChild.style.paddingBottom = "0px"

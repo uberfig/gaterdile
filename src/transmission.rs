@@ -92,6 +92,7 @@ pub enum TransmissionType {
     UserServers(Vec<ServerMember>),
     JoinServerResult(JoinServerResult),
     PriorMessages(Vec<Message>),
+    NoMorePrior,
 }
 
 impl std::fmt::Display for TransmissionType {
@@ -115,6 +116,7 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::JoinServerResult(_) => write!(f, "JoinServerResult"),
             TransmissionType::GetPriorMessages(_) => write!(f, "GetPriorMessages"),
             TransmissionType::PriorMessages(_) => write!(f, "PriorMessages"),
+            TransmissionType::NoMorePrior => write!(f, "NoMorePrior"),
         }
     }
 }
@@ -142,8 +144,8 @@ impl Transmission {
     pub fn parse(val: &str) -> Result<Self, ()> {
         let a = serde_json::from_str::<Transmission>(val);
         match a {
-            Ok(x) => return Result::Ok(x),
-            Err(_x) => return Result::Err(()),
+            Ok(x) => Result::Ok(x),
+            Err(_x) => Result::Err(()),
         }
     }
     pub fn invalid() -> Transmission {
@@ -156,9 +158,8 @@ impl Transmission {
         &self,
         stream: &mut ws::stream::DuplexStream,
     ) -> Result<(), ws::result::Error> {
-        let _a = stream
+        stream
             .send(rocket_ws::Message::Text(self.stringify()))
-            .await;
-        _a
+            .await
     }
 }
