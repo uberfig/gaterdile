@@ -82,6 +82,8 @@ pub enum TransmissionType {
     GetUserServers,
     JoinServer(i32),
     GetPriorMessages(i32),
+    GetEmoji(i32),
+    GetAttachment(i32),
     //from server only:
     InvalidTransmission,
     NewMessages(Vec<Message>),
@@ -117,6 +119,8 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::GetPriorMessages(_) => write!(f, "GetPriorMessages"),
             TransmissionType::PriorMessages(_) => write!(f, "PriorMessages"),
             TransmissionType::NoMorePrior => write!(f, "NoMorePrior"),
+            TransmissionType::GetEmoji(_) => write!(f, "GetEmoji"),
+            TransmissionType::GetAttachment(_) => write!(f, "GetAttachment"),
         }
     }
 }
@@ -141,12 +145,8 @@ impl Transmission {
     pub fn stringify(&self) -> String {
         serde_json::to_string(&self).unwrap()
     }
-    pub fn parse(val: &str) -> Result<Self, ()> {
-        let a = serde_json::from_str::<Transmission>(val);
-        match a {
-            Ok(x) => Result::Ok(x),
-            Err(_x) => Result::Err(()),
-        }
+    pub fn parse(val: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str::<Transmission>(val)
     }
     pub fn invalid() -> Transmission {
         Transmission {

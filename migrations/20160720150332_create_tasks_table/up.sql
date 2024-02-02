@@ -31,7 +31,8 @@ CREATE TABLE attachments (
 	owner		INTEGER NOT NULL,
 	server		INTEGER NOT NULL,
 	content		BLOB,
-	FOREIGN KEY(owner) REFERENCES users(id) ON DELETE CASCADE
+	FOREIGN KEY(owner) REFERENCES users(id) ON DELETE CASCADE,
+	FOREIGN KEY(server) REFERENCES servers(id) ON DELETE CASCADE
 );
 
 CREATE TABLE messages (
@@ -43,6 +44,8 @@ CREATE TABLE messages (
 	text		TEXT,
 	timestamp	BIGINT,
 	FOREIGN KEY(sender) REFERENCES users(id) ON DELETE CASCADE
+	-- FOREIGN KEY(server) REFERENCES servers(id) ON DELETE CASCADE
+	-- FOREIGN KEY(channel) REFERENCES channels(id) ON DELETE CASCADE
 );
 
 CREATE TABLE reactions (
@@ -59,7 +62,7 @@ CREATE TABLE server_members (
 	server_id		INTEGER NOT NULL,
 	userid			INTEGER NOT NULL,
 	nickname	TEXT,
-	FOREIGN KEY(server_id) REFERENCES servers(id) ON DELETE CASCADE,
+	-- FOREIGN KEY(server_id) REFERENCES servers(id) ON DELETE CASCADE,
 	FOREIGN KEY(userid) REFERENCES users(id) ON DELETE CASCADE
 );
 

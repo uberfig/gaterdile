@@ -78,7 +78,8 @@ async fn handle_send_message(
         return;
     }
     let message = t_msg.to_message(props.uid);
-    let _ = conn.send_message(message).await;
+    let x = conn.send_message(message).await;
+    dbg!(x);
 
     props.listening_server = Some(props.listening_server.unwrap_or(t_msg.server));
     props.listening_channel = Some(props.listening_server.unwrap_or(t_msg.channel));
@@ -134,7 +135,7 @@ async fn handle_get_channel(
         dbg!(y.id);
         }
         None => {
-        println!("no messages")
+        // println!("no messages")
         }
         }
         
