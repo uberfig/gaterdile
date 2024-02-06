@@ -1,0 +1,3 @@
+[submodule "client/static/twemoji"]
+	path = client/static/twemoji
+	url = https://github.com/jdecked/twemoji.git
