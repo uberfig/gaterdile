@@ -6,104 +6,10 @@ let uname_map = {};
 let oldest_message = null;
 let loading = false;
 
-class Reaction {
-	reaction;
-	message_id;
-	constructor(value, message_id) {
-		this.reaction = value;
-		this.message_id = message_id
-	}
-}
-
-class CreateUser {
-	CreateUser;
-	constructor(username, pass) {
-		this.CreateUser = new UserAuth(username, pass);
-	}
-}
-
-class Auth {
-	Auth;
-	constructor(username, pass) {
-		this.Auth = new UserAuth(username, pass);
-	}
-}
-
-class UserAuth {
-	username;
-	password;
-	constructor(username, pass) {
-		this.username = username;
-		this.password = pass;
-	}
-}
-
-class Transmission {
-	data;
-	transmission_type;
-	constructor(transmission_type, value) {
-		this.transmission_type = transmission_type
-		this.data = value;
-	}
-}
-
-class Message {
-	text;
-	sender;
-	server;
-	channel;
-	// reply = null;
-
-	constructor(text, server, channel, replying = null) {
-		this.text = text;
-		this.sender = uid;
-		this.server = server;
-		this.channel = channel;
-		// this.reply = replying;
-	}
-}
-class TransmitMessage {
-	SendMessage;
-	constructor(text, server, channel, replying = null) {
-		this.SendMessage = new Message(text, server, channel, replying)
-	}
-}
-
-class GetPriorMessages {
-	GetPriorMessages;
-	constructor(id) {
-		this.GetPriorMessages = id;
-	}
-}
-
-class GetServer {
-	GetServer;
-	constructor(server_id) {
-		this.GetServer = server_id;
-	}
-}
-
-async function get_old_messages(serverConn) {
-	var out = new Transmission("GetPriorMessages", new GetPriorMessages(oldest_message));
-	serverConn.send(JSON.stringify(out));
-}
-
-async function get_server(serverConn, server_id) {
-	var out = new Transmission("GetServer", new GetServer(server_id));
-	serverConn.send(JSON.stringify(out));
-}
-
 async function send_clicked() {
 	var input = document.getElementById("message_input").value;
 	document.getElementById("message_input").value = "";
 	send_message(input, 0, 0);
-}
-
-async function send_message(text, server, channel) {
-	var message = new TransmitMessage(text, server, channel);
-	var outgoing = new Transmission("Message", message);
-	serverConn.send(JSON.stringify(outgoing));
-	console.log("sent, ", outgoing);
 }
 
 async function get_connection() {
@@ -113,7 +19,7 @@ async function get_connection() {
 //display to the user that they disconnected from the server
 //and attempt to reconnect at perodic intervals
 function disconnected() {
-
+	console.log("disconnected from server");
 }
 
 //display to the user that they are connected to the server
@@ -122,28 +28,6 @@ function connected() {
 
 }
 
-class GetChannelTransmit {
-	GetChannel = [];
-	constructor(server, channel) {
-		this.GetChannel.push(server);
-		this.GetChannel.push(channel);
-	}
-}
-async function get_channel(serverConn, server, channel) {
-	const val = new Transmission("GetChannel", new GetChannelTransmit(server, channel));
-	serverConn.send(JSON.stringify(val));
-}
-
-class JoinServer {
-	JoinServer;
-	constructor(id) {
-		this.JoinServer = id;
-	}
-}
-async function join_server(serverConn, server) {
-	const val = new Transmission("JoinServer", new JoinServer(server));
-	serverConn.send(JSON.stringify(val));
-}
 
 function create_message_element(message) {
 	const parent = document.createElement("div");
@@ -156,6 +40,16 @@ function create_message_element(message) {
 	uname_ele.style.color = "rgb(147, 240, 167)"
 	uname_ele.classList = "uname";
 	parent.appendChild(uname_ele);
+
+	const datetime = document.createElement("p");
+	var date = new Date(message.timestamp);
+	var day = date.getDate();
+	var hours = date.getHours();
+	var minutes = "0" + date.getMinutes();
+	var seconds = "0" + date.getSeconds();
+	var formattedTime = document.createTextNode(day + " " +hours + ':' + minutes.slice(-2) /*+ ':' + seconds.substring(1,3)*/);
+	datetime.appendChild(formattedTime);
+	parent.appendChild(datetime);
 
 	let lines = message.text.split("\n");
 	for (let i = 0; i < lines.length; i++) {
@@ -173,6 +67,14 @@ function create_message_element(message) {
 	parent.dataset.sender = message.sender;
 	parent.dataset.timestamp = message.timestamp;
 
+	twemoji.parse(parent);
+	var img = parent.querySelectorAll('img');
+	for (let index = 0; index < img.length; index++) {
+		const element = img[index];
+		if (element.parentElement.innerText === "") {
+			element.parentElement.classList = "bigimg";
+		}
+	}
 	return parent;
 }
 
@@ -216,7 +118,7 @@ function handle_PriorMessages(message) {
 	const chat = document.getElementById("chat");
 	loading = false;
 
-	for (let i = message.PriorMessages.length -1; i >= 0; i--) {
+	for (let i = message.PriorMessages.length - 1; i >= 0; i--) {
 		oldest_message = message.PriorMessages[i].id;
 		let para = create_message_element(message.PriorMessages[i]);
 		if (chat.firstChild != null && chat.firstChild.dataset != null) {
@@ -230,8 +132,6 @@ function handle_PriorMessages(message) {
 		}
 		chat.prepend(para);
 	}
-
-	loading = false;
 }
 
 function prompt_auth() {
@@ -333,14 +233,9 @@ async function test() {
 	serverConn = await get_connection();
 
 	serverConn.onopen = (event) => {
-		// serverConn.send("Here's some text that the server is urgently awaiting!");
-		// serverConn.send(JSON.stringify(new Transmission("Reaction",new Reaction("🙂", 0))))
-		// send_message("hello", 0, 0);
+
 	};
 
-
-	// exampleSocket.send("Here's some text that the server is urgently awaiting!");
-	// exampleSocket.
 	serverConn.onmessage = (event) => {
 		const val = JSON.parse(event.data);
 
@@ -349,9 +244,13 @@ async function test() {
 		handle_event(serverConn, val);
 	};
 
-	// exampleSocket.close();
+	serverConn.onclose = (event) => {
+		disconnected();
+	}
 }
-function login() {
+function login(e) {
+	e.preventDefault();
+
 	var form = document.getElementById("login_form")
 	var formData = new FormData(form);
 	formData = Object.fromEntries(formData);
@@ -363,7 +262,9 @@ function login() {
 	return false;
 }
 
-function signup() {
+function signup(e) {
+	e.preventDefault();
+
 	var form = document.getElementById("signup_form")
 	var formData = new FormData(form);
 	formData = Object.fromEntries(formData);
@@ -391,30 +292,19 @@ function prevent(evt) {
 
 async function check_scroll() {
 	console.log("scrolling");
-	if (checkVisible(document.getElementById("loader")) && loading == false){
+	if (checkVisible(document.getElementById("loader")) && loading == false) {
 		loading = true;
 		// alert("top");
 		get_old_messages(serverConn);
 	}
 }
 
-// const input = document.querySelector("input");
 function initEvents() {
 	console.log("init");
 	document.getElementById("message_input").addEventListener("keydown", text_input_event, false);
 	document.getElementById("message_input").addEventListener("keypress", prevent, false);
-	// document.getElementById("chat").scroll(function(){
-	// 	if($(this).scrollTop() === 0){
-	// 		 alert("top");   
-	// 	}
-	// });
-	// document.getElementById("chat").addEventListener("onscroll", check_scroll, false);
+	document.getElementById("login_form").addEventListener("submit", login, false);
+	document.getElementById("signup_form").addEventListener("submit", signup, false);
 }
-
-// $("#contend").scroll(function(){
-//     if($(this).scrollTop() === 0){
-//          alert("top");   
-//     }
-// });
 
 window.onload = initEvents;

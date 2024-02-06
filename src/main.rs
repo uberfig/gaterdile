@@ -53,7 +53,7 @@ async fn create_user(conn: &DbConn, user: UserAuth) -> InsertError {
     if user.username.is_empty() {
         return InsertError::InvalidUsername;
     }
-    
+
     User::insert(user, conn).await
 }
 
@@ -127,23 +127,23 @@ async fn handle_get_channel(
         props.listening_server = Some(server_id);
         let newlast = x.get(x.len().wrapping_sub(1));
         match newlast {
-        Some(y) => {
-        props.last_sent_timestamp = Some(y.timestamp);
-        props.last_sent_id = Some(y.id.unwrap());
-        
-        println!("newlast id: ");
-        dbg!(y.id);
+            Some(y) => {
+                props.last_sent_timestamp = Some(y.timestamp);
+                props.last_sent_id = Some(y.id.unwrap());
+
+                println!("newlast id: ");
+                dbg!(y.id);
+            }
+            None => {
+                // println!("no messages")
+            }
         }
-        None => {
-        // println!("no messages")
-        }
-        }
-        
+
         let _ = TransmissionType::NewMessages(x)
-        .wrap_into_transmission()
-        .send(stream)
-        .await;
-        }
+            .wrap_into_transmission()
+            .send(stream)
+            .await;
+    }
 }
 
 async fn handle_get_prior(
@@ -155,7 +155,7 @@ async fn handle_get_prior(
 ) {
     let msg = conn.get_msg_by_id(last_msg).await;
 
-    let message= match msg {
+    let message = match msg {
         Ok(x) => x,
         Err(_) => {
             let _ = TransmissionType::InvalidTransmission
@@ -169,12 +169,19 @@ async fn handle_get_prior(
     let a = conn
         .get_messages_prior(server_id, channel_id, message.timestamp, last_msg, 40)
         .await;
-    
+
     if let Ok(x) = a {
-        let _ = TransmissionType::PriorMessages(x)
-        .wrap_into_transmission()
-        .send(stream)
-        .await;
+        if x.is_empty() {
+            let _ = TransmissionType::NoMorePrior
+                .wrap_into_transmission()
+                .send(stream)
+                .await;
+        } else {
+            let _ = TransmissionType::PriorMessages(x)
+                .wrap_into_transmission()
+                .send(stream)
+                .await;
+        }
     }
 }
 
@@ -280,20 +287,22 @@ async fn handle_transmission(
             )
             .await
         }
+        TransmissionType::GetEmoji(_) => todo!(),
+        TransmissionType::GetAttachment(_) => todo!(),
 
         //-----------------------------invalid types from client------------------------------------
-        TransmissionType::InvalidTransmission |
-        TransmissionType::NewMessages(_) |
-        TransmissionType::RequestAuth |
-        TransmissionType::AuthResult(_) |
-        TransmissionType::CreateUserResult(_) |
-        TransmissionType::ServerInfo(_) |
-        TransmissionType::UserServers(_) |
-        TransmissionType::JoinServerResult(_) |
-        TransmissionType::PriorMessages(_) |
-        TransmissionType::NoMorePrior => {
+        TransmissionType::InvalidTransmission
+        | TransmissionType::NewMessages(_)
+        | TransmissionType::RequestAuth
+        | TransmissionType::AuthResult(_)
+        | TransmissionType::CreateUserResult(_)
+        | TransmissionType::ServerInfo(_)
+        | TransmissionType::UserServers(_)
+        | TransmissionType::JoinServerResult(_)
+        | TransmissionType::PriorMessages(_)
+        | TransmissionType::NoMorePrior => {
             let _ = Transmission::invalid().send(stream).await;
-        },
+        }
     }
 }
 
@@ -445,6 +454,6 @@ fn rocket() -> _ {
         .attach(DbConn::fairing())
         // .attach(Template::fairing())
         .attach(AdHoc::on_ignite("Run Migrations", run_migrations))
-        .mount("/", FileServer::from(relative!("static")))
+        .mount("/", FileServer::from(relative!("client/static")))
         .mount("/", routes![message_channel])
 }

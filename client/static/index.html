@@ -6,7 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat</title>
     <link rel="stylesheet" href="styles.css">
+    
     <script src="script.js"></script>
+    <script src="modules/transmission_types.js"></script>
+    <script src="modules/transmission_methods.js"></script>
+    <script src="twemoji/v/latest/twemoji.min.js" crossorigin="anonymous"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js" crossorigin="anonymous"></script> -->
 </head>
 
 <body>
@@ -32,7 +37,7 @@
         <p class="auth_failure", id="auth_failure"></p>
         <div>
             <h1>Login</h1>
-            <form onsubmit="return login();" autocomplete="on" id="login_form">
+            <form  autocomplete="on" id="login_form">
                 <label for="username">Username</label><br><input type="text" name="username" />
                 <br>
                 <label for="password">Password</label><br><input type="password" name="password" />
@@ -42,7 +47,7 @@
         </div>
         <div>
             <h1>Signup</h1>
-            <form onsubmit="return signup()" autocomplete="on" id="signup_form">
+            <form autocomplete="on" id="signup_form">
                 <label for="username">Username</label><br><input type="text" name="username" />
                 <br>
                 <label for="password">Password</label><br><input type="password" name="password" />
