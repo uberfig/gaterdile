@@ -345,6 +345,7 @@ function initEvents() {
 	document.getElementById("login_form").addEventListener("submit", login, false);
 	document.getElementById("signup_form").addEventListener("submit", signup, false);
 	prompt_auth();
+	feather.replace({'stroke-width': 2, 'color': '#ffffff'});
 }
 
 window.onload = initEvents;
