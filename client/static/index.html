@@ -29,13 +29,22 @@
     
 
     </div>
-    <div class="input">
+    <!-- <div class="input">
         <button onclick="send_clicked()">Send</button>
         <div class="text_input_container">
             <textarea name="text_input" id="message_input" rows="2" placeholder="message #0,0" onkeypress=""></textarea>
         </div>
+    </div> -->
+    <div class="input">
+        <div class="input_container">
+            <button onclick="send_clicked()">Send</button>
+            <div class="text_input_container">
+                <div contenteditable="true" name="text_input" id="message_input" placeholder="message #0,0" class="text_input"></div>
+            </div>
+        </div>
     </div>
 </body>
+
 <div class='auth_prompt' id="auth_prompt">
     <div class="login" id="login">
         <p class="auth_failure", id="auth_failure"></p>

@@ -7,8 +7,14 @@ let oldest_message = null;
 let loading = false;
 
 async function send_clicked() {
-	var input = document.getElementById("message_input").value;
-	document.getElementById("message_input").value = "";
+	var input = document.getElementById("message_input").textContent;
+	// var input = document.getElementById("message_input").innerText;
+	// var input = document.getElementById("message_input").innerHTML;
+	// input = input.replace("<br>", "\n");
+
+
+	document.getElementById("message_input").textContent = "";
+	console.log("passing: "+input);
 	send_message(input, 0, 0);
 }
 
@@ -84,8 +90,8 @@ function create_message_element(message) {
 
 	let lines = message.text.split("\n");
 	for (let i = 0; i < lines.length; i++) {
-		if (lines[i] == "") {
-			parent.appendChild(document.createElement("br"));
+		if (lines[i] == "" && i != 0 && i != lines.length-1) {
+			message_content.appendChild(document.createElement("br"));
 			continue
 		}
 		const p_ele = document.createElement("p");
@@ -338,6 +344,7 @@ function initEvents() {
 	document.getElementById("message_input").addEventListener("keypress", prevent, false);
 	document.getElementById("login_form").addEventListener("submit", login, false);
 	document.getElementById("signup_form").addEventListener("submit", signup, false);
+	prompt_auth();
 }
 
 window.onload = initEvents;
