@@ -50,8 +50,6 @@ function create_message_element(message) {
 	const reaction_butt = document.createElement("button");
 	reaction_butt.classList.add("reaction_button");
 	const emoji_icon = feather.icons.smile.toSvg();
-	// const button_content = document.createTextNode("😁");
-	// reaction_butt.appendChild(button_content);
 	reaction_butt.insertAdjacentHTML("afterbegin", emoji_icon);
 	menu_items.appendChild(reaction_butt);
 
@@ -159,8 +157,8 @@ function handle_PriorMessages(message) {
 		if (chat.firstChild != null && chat.firstChild.dataset != null) {
 
 			if (chat.firstChild.dataset.sender == message.PriorMessages[i].sender) {
-				let below = chat.firstChild.querySelector(".uname");
-				below.style.display = "none";
+				let below = chat.firstChild.querySelector(".username");
+				below.parentElement.style.display = "none";
 				para.style.paddingBottom = "0px"
 			}
 
