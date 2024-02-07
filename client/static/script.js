@@ -28,28 +28,61 @@ function connected() {
 
 }
 
-
 function create_message_element(message) {
 	const parent = document.createElement("div");
 	parent.classList.add("message");
 
+	const hovermenu = document.createElement("div");
+	hovermenu.classList.add("hovermenu");
+	parent.appendChild(hovermenu);
+
+	const menu_items = document.createElement("div");
+	menu_items.classList.add("menu_items");
+	hovermenu.appendChild(menu_items);
+
+	//corner-up-left
+	
+	const reply_butt = document.createElement("button");
+	const reply_icon = feather.icons["corner-up-left"].toSvg();
+	reply_butt.insertAdjacentHTML("afterbegin", reply_icon);
+	menu_items.appendChild(reply_butt);
+
+	const reaction_butt = document.createElement("button");
+	reaction_butt.classList.add("reaction_button");
+	const emoji_icon = feather.icons.smile.toSvg();
+	// const button_content = document.createTextNode("😁");
+	// reaction_butt.appendChild(button_content);
+	reaction_butt.insertAdjacentHTML("afterbegin", emoji_icon);
+	menu_items.appendChild(reaction_butt);
+
+	const more_butt = document.createElement("button");
+	const more_icon = feather.icons["more-horizontal"].toSvg();
+	more_butt.insertAdjacentHTML("afterbegin", more_icon);
+	menu_items.appendChild(more_butt);
+
+	const top = document.createElement("div");
+	top.classList.add("message_top");
+	parent.appendChild(top);
+
 	const uname_ele = document.createElement("p");
+	uname_ele.classList.add("username");
 	let name = uname_map[message.sender];
-	const uname = document.createTextNode(name + ":");
+	const uname = document.createTextNode(name);
 	uname_ele.appendChild(uname);
-	uname_ele.style.color = "rgb(147, 240, 167)"
-	uname_ele.classList = "uname";
-	parent.appendChild(uname_ele);
+	top.appendChild(uname_ele);
 
 	const datetime = document.createElement("p");
+	datetime.classList.add("datetime");
 	var date = new Date(message.timestamp);
 	var day = date.getDate();
 	var hours = date.getHours();
 	var minutes = "0" + date.getMinutes();
 	var seconds = "0" + date.getSeconds();
-	var formattedTime = document.createTextNode(day + " " +hours + ':' + minutes.slice(-2) /*+ ':' + seconds.substring(1,3)*/);
+	var formattedTime = document.createTextNode(day + "/" + (parseInt(date.getMonth())+1) + "/" + date.getFullYear() + " " +hours + ':' + minutes.slice(-2));
 	datetime.appendChild(formattedTime);
-	parent.appendChild(datetime);
+	top.appendChild(datetime);
+
+	const message_content = document.createElement("div");
 
 	let lines = message.text.split("\n");
 	for (let i = 0; i < lines.length; i++) {
@@ -60,15 +93,17 @@ function create_message_element(message) {
 		const p_ele = document.createElement("p");
 		const node = document.createTextNode(lines[i]);
 		p_ele.appendChild(node)
-		parent.appendChild(p_ele);
+		message_content.appendChild(p_ele);
 	}
+
+	parent.appendChild(message_content);
 
 	parent.id = message.id
 	parent.dataset.sender = message.sender;
 	parent.dataset.timestamp = message.timestamp;
 
 	twemoji.parse(parent);
-	var img = parent.querySelectorAll('img');
+	var img = message_content.querySelectorAll('img');
 	for (let index = 0; index < img.length; index++) {
 		const element = img[index];
 		if (element.parentElement.innerText === "") {
@@ -100,8 +135,8 @@ function handle_NewMessage(message) {
 		if (chat.lastChild != null && chat.lastChild.dataset != null) {
 
 			if (chat.lastChild.dataset.sender == message.NewMessages[i].sender && message.NewMessages[i].timestamp - chat.lastChild.dataset.timestamp < 4000) {
-				let above = para.querySelector(".uname");
-				above.style.display = "none";
+				let above = para.querySelector(".username");
+				above.parentElement.style.display = "none";
 				chat.lastChild.style.paddingBottom = "0px"
 			}
 
