@@ -14,10 +14,10 @@
     /* /* padding-left: 1em; */
     border-bottom: 1px solid #1e1f22;
     /* border-bottom: 2px; */
-    h1 {
-        /* position: relative; */
-        /* margin-top: 1em; */
-    }
+    /* h1 {
+        position: relative;
+        margin-top: 1em;
+    } */
 }
 
 .loader {
@@ -126,14 +126,30 @@
     button {
         height: min-content;
         border: none;
-        background-color: #2c2e33;
+        /* border-radius: 20px; */
+        border-radius: 100%;
+        aspect-ratio: 1;
+        background-color: #212225;
+        padding: 5px;
+        /* background-color: #2c2e33; */
+    }
+    button:hover {
+        background-color: #33353a;
+    }
+    .send {
+        /* background-color: #12704c; */
+        background-color: #149262;
+    }
+    .send:hover {
+        /* background-color: #149262; */
+        background-color: #27b17c;
     }
 }
 
 .input_container {
     display: flex;
     flex-direction: row;
-    gap: 10px;
+    gap: 5px;
 
     margin-left: 1em;
     margin-right: 1em;

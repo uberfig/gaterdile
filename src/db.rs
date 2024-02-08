@@ -3,7 +3,7 @@ use argon2::{
     Argon2,
 };
 // use chrono::NaiveDateTime;
-use crate::schema::schema::{self, channels, server_members};
+use crate::schema::db_schema::{self, channels, server_members};
 use rocket::serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -29,7 +29,7 @@ pub enum AuthErr {
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug)]
-#[diesel(table_name = schema::users)]
+#[diesel(table_name = db_schema::users)]
 pub struct User {
     pub id: Option<i32>,
     pub username: String,
@@ -54,11 +54,11 @@ impl User {
         let argon2 = Argon2::default();
         let password_hash = argon2.hash_password(new_user.password.as_bytes(), &salt);
 
-        let pass;
-        match password_hash {
-            Ok(x) => pass = x.to_string(),
-            Err(_) => return InsertError::InvalidPassword,
+        if password_hash.is_err() {
+            return InsertError::InvalidPassword;
         }
+
+        let pass = password_hash.unwrap().to_string();
 
         let t = User {
             id: None,
@@ -69,35 +69,36 @@ impl User {
 
         let e = conn.insert_user(t).await;
         match e {
-            Ok(x) => return InsertError::Success(x),
+            Ok(x) => InsertError::Success(x),
             Err(_x) => {
                 println!("insert");
                 dbg!(_x);
-                return InsertError::DbError;
+                InsertError::DbError
             }
         }
     }
 
     pub async fn auth(user: UserAuth, conn: &DbConn) -> AuthErr {
         let e = conn.get_user_by_name(user.username).await;
-        let query;
-        match e {
-            Err(_x) => return AuthErr::InvalidUsername,
-            Ok(x) => query = x,
+        
+        if e.is_err() {
+            return AuthErr::InvalidUsername;
         }
+
+        let query = e.unwrap();
 
         let password_hash = PasswordHash::new(&query.password).unwrap();
         let verified = Argon2::default().verify_password(user.password.as_bytes(), &password_hash);
 
         match verified {
-            Ok(_) => return AuthErr::Success(query.id.unwrap()),
-            Err(_) => return AuthErr::InvalidPassword,
+            Ok(_) => AuthErr::Success(query.id.unwrap()),
+            Err(_) => AuthErr::InvalidPassword,
         }
     }
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = schema::messages)]
+#[diesel(table_name = db_schema::messages)]
 pub struct Message {
     pub id: Option<i32>,
     pub sender: i32,
@@ -110,7 +111,7 @@ pub struct Message {
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = schema::server_members)]
+#[diesel(table_name = db_schema::server_members)]
 pub struct ServerMember {
     // pub id: Option<i32>,
     pub server_id: i32,
@@ -119,7 +120,7 @@ pub struct ServerMember {
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = schema::channels)]
+#[diesel(table_name = db_schema::channels)]
 pub struct Channel {
     pub id: Option<i32>,
     pub server: i32,
@@ -127,7 +128,7 @@ pub struct Channel {
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = schema::channel_events)]
+#[diesel(table_name = db_schema::channel_events)]
 pub struct ChannelEvent {
     pub id: Option<i32>,
     pub channel_id: i32,
@@ -149,7 +150,7 @@ pub enum JoinServerResult {
 #[database("diesel")]
 pub struct DbConn(diesel::SqliteConnection);
 use diesel::{prelude::*, result::Error};
-use schema::{
+use db_schema::{
     // messages::{self, channel},
     messages::{self},
     // messages::self,
@@ -175,8 +176,8 @@ impl DbConn {
     pub async fn get_user_name(&self, id: i32) -> Result<String, Error> {
         let user: User = self
             .run(move |conn| {
-                schema::users::table
-                    .filter(schema::users::id.eq(id))
+                db_schema::users::table
+                    .filter(db_schema::users::id.eq(id))
                     .first(conn)
             })
             .await?;
@@ -186,7 +187,7 @@ impl DbConn {
     pub async fn insert_user(&self, user: User) -> Result<usize, Error> {
         self
             .run(move |c| {
-                diesel::insert_into(schema::users::table)
+                diesel::insert_into(db_schema::users::table)
                     .values(user)
                     .execute(c)
             })
@@ -206,15 +207,13 @@ impl DbConn {
     }
 
     pub async fn send_message(&self, message: Message) -> Result<usize, diesel::result::Error> {
-        let e = self
+        self
             .run(move |c| {
-                let a = diesel::insert_into(schema::messages::table)
+                diesel::insert_into(db_schema::messages::table)
                     .values(message)
-                    .execute(c);
-                a
+                    .execute(c)
             })
-            .await;
-        e
+            .await
     }
 
     pub async fn get_channel_messages(
@@ -409,7 +408,7 @@ impl DbConn {
     pub async fn join_server(&self, message: ServerMember) -> JoinServerResult {
         let e = self
             .run(move |c| {
-                diesel::insert_into(schema::server_members::table)
+                diesel::insert_into(db_schema::server_members::table)
                     .values(message)
                     .execute(c)
             })

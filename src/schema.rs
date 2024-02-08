@@ -1,4 +1,4 @@
-pub mod schema {
+pub mod db_schema {
     table! {
         users {
             id -> Nullable<Integer>,
@@ -57,12 +57,6 @@ pub mod schema {
             roleid  -> Nullable<Integer>
         }
     }
-    // table! {
-    //     usernames (userid) {
-    //         userid 	-> Integer,
-    //         username-> Text,
-    //     }
-    // }
     table! {
         reactions (id) {
             id -> Integer,

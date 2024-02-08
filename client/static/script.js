@@ -269,7 +269,7 @@ async function handle_event(serverConn, event) {
 }
 
 var serverConn;
-async function test() {
+async function establish_connection() {
 	serverConn = await get_connection();
 
 	serverConn.onopen = (event) => {
@@ -316,7 +316,7 @@ function signup(e) {
 	return false;
 }
 
-test();
+// establish_connection();
 
 function text_input_event(evt) {
 	if (evt.key == "Enter" && !evt.shiftKey) {
@@ -345,8 +345,10 @@ function initEvents() {
 	document.getElementById("message_input").addEventListener("keypress", prevent, false);
 	document.getElementById("login_form").addEventListener("submit", login, false);
 	document.getElementById("signup_form").addEventListener("submit", signup, false);
-	prompt_auth();
+	
 	feather.replace({'stroke-width': 2, 'color': '#ffffff'});
+	establish_connection();
+	prompt_auth();
 }
 
 window.onload = initEvents;

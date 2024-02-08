@@ -1,4 +1,4 @@
-//gatordile
+//gaterdile
 #![recursion_limit = "2048"]
 #![type_length_limit = "2048"]
 #[macro_use]
@@ -78,8 +78,8 @@ async fn handle_send_message(
         return;
     }
     let message = t_msg.to_message(props.uid);
-    let x = conn.send_message(message).await;
-    dbg!(x);
+    let _x = conn.send_message(message).await;
+    // dbg!(_x);
 
     props.listening_server = Some(props.listening_server.unwrap_or(t_msg.server));
     props.listening_channel = Some(props.listening_server.unwrap_or(t_msg.channel));
