@@ -66,3 +66,16 @@ CREATE TABLE server_members (
 	FOREIGN KEY(userid) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE channel_events (
+	id				INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
+	channel_id		INTEGER NOT NULL,
+	timestamp		BIGINT NOT NULL,
+	event_type		INTEGER NOT NULL,
+	message			INTEGER,
+	reaction		INTEGER,
+	user			INTEGER,
+	FOREIGN KEY(user) REFERENCES users(id) ON DELETE CASCADE
+	FOREIGN KEY(reaction) REFERENCES reactions(id) ON DELETE CASCADE
+	FOREIGN KEY(message) REFERENCES messages(id) ON DELETE CASCADE
+	FOREIGN KEY(channel_id) REFERENCES channels(id) ON DELETE CASCADE
+);

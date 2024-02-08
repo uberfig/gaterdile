@@ -126,6 +126,18 @@ pub struct Channel {
     pub name: String,
 }
 
+#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
+#[diesel(table_name = schema::channel_events)]
+pub struct ChannelEvent {
+    pub id: Option<i32>,
+    pub channel_id: i32,
+    pub timestamp: i64,
+    pub event_type: i32,
+    pub message: Option<i32>,
+    pub reaction: Option<i32>,
+    pub user: Option<i32>,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum JoinServerResult {
     Success(i32),
@@ -172,24 +184,18 @@ impl DbConn {
     }
 
     pub async fn insert_user(&self, user: User) -> Result<usize, Error> {
-        let e = self
+        self
             .run(move |c| {
-                let a = diesel::insert_into(schema::users::table)
+                diesel::insert_into(schema::users::table)
                     .values(user)
-                    .execute(c);
-                a
+                    .execute(c)
             })
-            .await;
-
-        return e;
+            .await
     }
 
     pub async fn has_user(&self, name: String) -> bool {
         let e = self.get_user_by_name(name).await;
-        match e {
-            Ok(_) => return true,
-            Err(_) => return false,
-        }
+        e.is_ok()
     }
 
     pub async fn get_msg_by_id(&self, id: i32) -> Result<Message, Error> {
@@ -282,7 +288,7 @@ impl DbConn {
         since: chrono::NaiveDateTime,
         amount: i64,
     ) -> Result<Vec<Message>, diesel::result::Error> {
-        let val = self
+        self
             .run(move |conn| {
                 messages::dsl::messages
                     .filter(messages::dsl::server.eq(server_id))
@@ -294,9 +300,7 @@ impl DbConn {
                     // .order(messages::dsl::id.desc())
                     .load::<Message>(conn)
             })
-            .await;
-
-        val
+            .await
     }
 
     pub async fn get_messages_since_timestamp(
@@ -306,7 +310,7 @@ impl DbConn {
         since: i64,
         amount: i64,
     ) -> Result<Vec<Message>, diesel::result::Error> {
-        let val = self
+        self
             .run(move |conn| {
                 messages::dsl::messages
                     .filter(messages::dsl::server.eq(server_id))
@@ -318,9 +322,7 @@ impl DbConn {
                     // .order(messages::dsl::id.desc())
                     .load::<Message>(conn)
             })
-            .await;
-
-        val
+            .await
     }
 
     pub async fn get_messages_since_timestamp_and_id(
@@ -331,7 +333,7 @@ impl DbConn {
         id: i32,
         amount: i64,
     ) -> Result<Vec<Message>, diesel::result::Error> {
-        let val = self
+        self
             .run(move |conn| {
                 messages::dsl::messages
                     .filter(messages::dsl::server.eq(server_id))
@@ -344,9 +346,7 @@ impl DbConn {
                     .filter(messages::dsl::id.ne(id))
                     .load::<Message>(conn)
             })
-            .await;
-
-        val
+            .await
     }
 
     pub async fn get_server_members(
@@ -364,7 +364,7 @@ impl DbConn {
         match &mut val {
             Ok(y) => {
                 for member in y {
-                    if matches!(member.nickname, None) {
+                    if member.nickname.is_none() {
                         let uname = self.get_user_name(member.userid).await;
                         member.nickname = Some(uname.unwrap_or("unable to fetch".to_string()));
                     }
@@ -384,47 +384,42 @@ impl DbConn {
         &self,
         uid: i32,
     ) -> Result<Vec<ServerMember>, diesel::result::Error> {
-        let val = self
+        self
             .run(move |conn| {
                 server_members::dsl::server_members
                     .filter(server_members::dsl::userid.eq(uid))
                     .load::<ServerMember>(conn)
             })
-            .await;
-
-        val
+            .await
     }
 
     pub async fn get_server_channels(
         &self,
         server_id: i32,
     ) -> Result<Vec<Channel>, diesel::result::Error> {
-        let val = self
+        self
             .run(move |conn| {
                 channels::dsl::channels
                     .filter(channels::dsl::server.eq(server_id))
                     .load::<Channel>(conn)
             })
-            .await;
-
-        val
+            .await
     }
 
     pub async fn join_server(&self, message: ServerMember) -> JoinServerResult {
         let e = self
             .run(move |c| {
-                let a = diesel::insert_into(schema::server_members::table)
+                diesel::insert_into(schema::server_members::table)
                     .values(message)
-                    .execute(c);
-                a
+                    .execute(c)
             })
             .await;
 
         match e {
-            Ok(x) => return JoinServerResult::Success(x as i32),
+            Ok(x) => JoinServerResult::Success(x as i32),
             Err(x) => {
                 dbg!(x);
-                return JoinServerResult::AlreadyInServer;
+                JoinServerResult::AlreadyInServer
             }
         }
     }

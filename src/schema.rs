@@ -79,4 +79,15 @@ pub mod schema {
             nickname -> Nullable<Text>,
         }
     }
+    table! {
+        channel_events {
+            id -> Nullable<Integer>,
+            channel_id -> Integer,
+            timestamp -> BigInt,
+            event_type -> Integer,
+            message -> Nullable<Integer>,
+            reaction -> Nullable<Integer>,
+            user -> Nullable<Integer>,
+        }
+    }
 }
