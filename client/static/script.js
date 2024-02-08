@@ -7,15 +7,16 @@ let oldest_message = null;
 let loading = false;
 
 async function send_clicked() {
-	var input = document.getElementById("message_input").textContent;
+	var input = document.getElementById("message_input").textContent.trim();
 	// var input = document.getElementById("message_input").innerText;
 	// var input = document.getElementById("message_input").innerHTML;
 	// input = input.replace("<br>", "\n");
 
 
 	document.getElementById("message_input").textContent = "";
-	console.log("passing: "+input);
-	send_message(input, 0, 0);
+	if (input != "") {
+		send_message(input, 0, 0);
+	}
 }
 
 async function get_connection() {
