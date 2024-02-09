@@ -80,7 +80,7 @@ impl User {
 
     pub async fn auth(user: UserAuth, conn: &DbConn) -> AuthErr {
         let e = conn.get_user_by_name(user.username).await;
-        
+
         if e.is_err() {
             return AuthErr::InvalidUsername;
         }
@@ -137,6 +137,119 @@ pub struct ChannelEvent {
     pub message: Option<i32>,
     pub reaction: Option<i32>,
     pub user: Option<i32>,
+    pub deleted: Option<i32>, //used for the id of deleted content
+}
+
+pub enum ChannelEventType {
+    NewMessage(i32),
+    MessageDeleted(i32),
+    NewReaction(i32),
+    DeleteReaction(i32),
+    UserJoin(i32),
+    UserLeave(i32),
+    Error,
+}
+
+impl ChannelEvent {
+    fn to_event_type(&self) -> ChannelEventType {
+        match self.event_type {
+            0 => ChannelEventType::NewMessage(self.message.unwrap()),
+            1 => ChannelEventType::MessageDeleted(self.deleted.unwrap()),
+            2 => ChannelEventType::NewReaction(self.reaction.unwrap()),
+            3 => ChannelEventType::DeleteReaction(self.deleted.unwrap()),
+            4 => ChannelEventType::UserJoin(self.user.unwrap()),
+            5 => ChannelEventType::UserLeave(self.user.unwrap()),
+            _ => ChannelEventType::Error,
+        }
+    }
+}
+
+impl ChannelEventType {
+    fn to_int(&self) -> i32 {
+        match self {
+            ChannelEventType::NewMessage(_) => 0,
+            ChannelEventType::MessageDeleted(_) => 1,
+            ChannelEventType::NewReaction(_) => 2,
+            ChannelEventType::DeleteReaction(_) => 3,
+            ChannelEventType::UserJoin(_) => 4,
+            ChannelEventType::UserLeave(_) => 5,
+            ChannelEventType::Error => -1,
+        }
+    }
+    fn to_event(&self, channel_id: i32, timestamp: i64) -> ChannelEvent {
+        match self {
+            ChannelEventType::NewMessage(x) => ChannelEvent {
+                id: None,
+                channel_id,
+                timestamp,
+                event_type: self.to_int(),
+                message: Some(*x),
+                reaction: None,
+                user: None,
+                deleted: None,
+            },
+            ChannelEventType::MessageDeleted(x) => ChannelEvent {
+                id: None,
+                channel_id,
+                timestamp,
+                event_type: self.to_int(),
+                message: None,
+                reaction: None,
+                user: None,
+                deleted: Some(*x),
+            },
+            ChannelEventType::NewReaction(x) => ChannelEvent {
+                id: None,
+                channel_id,
+                timestamp,
+                event_type: self.to_int(),
+                message: None,
+                reaction: Some(*x),
+                user: None,
+                deleted: None,
+            },
+            ChannelEventType::DeleteReaction(x) => ChannelEvent {
+                id: None,
+                channel_id,
+                timestamp,
+                event_type: self.to_int(),
+                message: None,
+                reaction: None,
+                user: None,
+                deleted: Some(*x),
+            },
+            ChannelEventType::UserJoin(x) => ChannelEvent {
+                id: None,
+                channel_id,
+                timestamp,
+                event_type: self.to_int(),
+                message: None,
+                reaction: None,
+                user: Some(*x),
+                deleted: None,
+            },
+            ChannelEventType::UserLeave(x) => ChannelEvent {
+                id: None,
+                channel_id,
+                timestamp,
+                event_type: self.to_int(),
+                message: None,
+                reaction: None,
+                user: Some(*x),
+                deleted: None,
+            },
+            ChannelEventType::Error => ChannelEvent {
+                id: None,
+                channel_id,
+                timestamp,
+                event_type: self.to_int(),
+                message: None,
+                reaction: None,
+                user: None,
+                deleted: None,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -149,7 +262,6 @@ pub enum JoinServerResult {
 
 #[database("diesel")]
 pub struct DbConn(diesel::SqliteConnection);
-use diesel::{prelude::*, result::Error};
 use db_schema::{
     // messages::{self, channel},
     messages::{self},
@@ -157,6 +269,7 @@ use db_schema::{
     // usernames, users,
     users,
 };
+use diesel::{prelude::*, result::Error};
 
 impl DbConn {
     pub async fn get_user_by_id(&self, id: i32) -> Result<User, Error> {
@@ -185,13 +298,12 @@ impl DbConn {
     }
 
     pub async fn insert_user(&self, user: User) -> Result<usize, Error> {
-        self
-            .run(move |c| {
-                diesel::insert_into(db_schema::users::table)
-                    .values(user)
-                    .execute(c)
-            })
-            .await
+        self.run(move |c| {
+            diesel::insert_into(db_schema::users::table)
+                .values(user)
+                .execute(c)
+        })
+        .await
     }
 
     pub async fn has_user(&self, name: String) -> bool {
@@ -207,13 +319,12 @@ impl DbConn {
     }
 
     pub async fn send_message(&self, message: Message) -> Result<usize, diesel::result::Error> {
-        self
-            .run(move |c| {
-                diesel::insert_into(db_schema::messages::table)
-                    .values(message)
-                    .execute(c)
-            })
-            .await
+        self.run(move |c| {
+            diesel::insert_into(db_schema::messages::table)
+                .values(message)
+                .execute(c)
+        })
+        .await
     }
 
     pub async fn get_channel_messages(
@@ -287,19 +398,18 @@ impl DbConn {
         since: chrono::NaiveDateTime,
         amount: i64,
     ) -> Result<Vec<Message>, diesel::result::Error> {
-        self
-            .run(move |conn| {
-                messages::dsl::messages
-                    .filter(messages::dsl::server.eq(server_id))
-                    .filter(messages::dsl::channel.eq(channel_id))
-                    .filter(messages::dsl::timestamp.ge(since.timestamp_millis()))
-                    .order(messages::dsl::timestamp.desc())
-                    .limit(amount)
-                    .order(messages::dsl::timestamp.asc())
-                    // .order(messages::dsl::id.desc())
-                    .load::<Message>(conn)
-            })
-            .await
+        self.run(move |conn| {
+            messages::dsl::messages
+                .filter(messages::dsl::server.eq(server_id))
+                .filter(messages::dsl::channel.eq(channel_id))
+                .filter(messages::dsl::timestamp.ge(since.timestamp_millis()))
+                .order(messages::dsl::timestamp.desc())
+                .limit(amount)
+                .order(messages::dsl::timestamp.asc())
+                // .order(messages::dsl::id.desc())
+                .load::<Message>(conn)
+        })
+        .await
     }
 
     pub async fn get_messages_since_timestamp(
@@ -309,19 +419,18 @@ impl DbConn {
         since: i64,
         amount: i64,
     ) -> Result<Vec<Message>, diesel::result::Error> {
-        self
-            .run(move |conn| {
-                messages::dsl::messages
-                    .filter(messages::dsl::server.eq(server_id))
-                    .filter(messages::dsl::channel.eq(channel_id))
-                    .filter(messages::dsl::timestamp.ge(since))
-                    .order(messages::dsl::timestamp.desc())
-                    .limit(amount)
-                    .order(messages::dsl::timestamp.asc())
-                    // .order(messages::dsl::id.desc())
-                    .load::<Message>(conn)
-            })
-            .await
+        self.run(move |conn| {
+            messages::dsl::messages
+                .filter(messages::dsl::server.eq(server_id))
+                .filter(messages::dsl::channel.eq(channel_id))
+                .filter(messages::dsl::timestamp.ge(since))
+                .order(messages::dsl::timestamp.desc())
+                .limit(amount)
+                .order(messages::dsl::timestamp.asc())
+                // .order(messages::dsl::id.desc())
+                .load::<Message>(conn)
+        })
+        .await
     }
 
     pub async fn get_messages_since_timestamp_and_id(
@@ -332,20 +441,19 @@ impl DbConn {
         id: i32,
         amount: i64,
     ) -> Result<Vec<Message>, diesel::result::Error> {
-        self
-            .run(move |conn| {
-                messages::dsl::messages
-                    .filter(messages::dsl::server.eq(server_id))
-                    .filter(messages::dsl::channel.eq(channel_id))
-                    .filter(messages::dsl::timestamp.ge(since))
-                    .order(messages::dsl::timestamp.desc())
-                    .limit(amount)
-                    // .order(messages::dsl::id.desc())
-                    .order(messages::dsl::timestamp.asc())
-                    .filter(messages::dsl::id.ne(id))
-                    .load::<Message>(conn)
-            })
-            .await
+        self.run(move |conn| {
+            messages::dsl::messages
+                .filter(messages::dsl::server.eq(server_id))
+                .filter(messages::dsl::channel.eq(channel_id))
+                .filter(messages::dsl::timestamp.ge(since))
+                .order(messages::dsl::timestamp.desc())
+                .limit(amount)
+                // .order(messages::dsl::id.desc())
+                .order(messages::dsl::timestamp.asc())
+                .filter(messages::dsl::id.ne(id))
+                .load::<Message>(conn)
+        })
+        .await
     }
 
     pub async fn get_server_members(
@@ -383,26 +491,24 @@ impl DbConn {
         &self,
         uid: i32,
     ) -> Result<Vec<ServerMember>, diesel::result::Error> {
-        self
-            .run(move |conn| {
-                server_members::dsl::server_members
-                    .filter(server_members::dsl::userid.eq(uid))
-                    .load::<ServerMember>(conn)
-            })
-            .await
+        self.run(move |conn| {
+            server_members::dsl::server_members
+                .filter(server_members::dsl::userid.eq(uid))
+                .load::<ServerMember>(conn)
+        })
+        .await
     }
 
     pub async fn get_server_channels(
         &self,
         server_id: i32,
     ) -> Result<Vec<Channel>, diesel::result::Error> {
-        self
-            .run(move |conn| {
-                channels::dsl::channels
-                    .filter(channels::dsl::server.eq(server_id))
-                    .load::<Channel>(conn)
-            })
-            .await
+        self.run(move |conn| {
+            channels::dsl::channels
+                .filter(channels::dsl::server.eq(server_id))
+                .load::<Channel>(conn)
+        })
+        .await
     }
 
     pub async fn join_server(&self, message: ServerMember) -> JoinServerResult {
@@ -423,11 +529,19 @@ impl DbConn {
         }
     }
 
-    // pub async fn create_reaction(&self, server_id: i32, channel_id: i32) {
-    //     todo!()
-    // }
-
-    // pub async fn remove_reaction(&self, server_id: i32, channel_id: i32) {
-    //     todo!()
-    // }
+    pub async fn create_channel_event(
+        &self,
+        channel_id: i32,
+        timestamp: i64,
+        event_type: ChannelEventType,
+    ) -> Result<usize, diesel::result::Error> {
+        let event = event_type.to_event(channel_id, timestamp);
+        
+        self.run(move |c| {
+            diesel::insert_into(db_schema::channel_events::table)
+                .values(event)
+                .execute(c)
+        })
+        .await
+    }
 }

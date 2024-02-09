@@ -82,6 +82,7 @@ pub mod db_schema {
             message -> Nullable<Integer>,
             reaction -> Nullable<Integer>,
             user -> Nullable<Integer>,
+            deleted -> Nullable<Integer>,
         }
     }
 }

@@ -74,6 +74,7 @@ CREATE TABLE channel_events (
 	message			INTEGER,
 	reaction		INTEGER,
 	user			INTEGER,
+	deleted			INTEGER,
 	FOREIGN KEY(user) REFERENCES users(id) ON DELETE CASCADE
 	FOREIGN KEY(reaction) REFERENCES reactions(id) ON DELETE CASCADE
 	FOREIGN KEY(message) REFERENCES messages(id) ON DELETE CASCADE
