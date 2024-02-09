@@ -48,7 +48,7 @@ function create_message_element(message) {
 	hovermenu.appendChild(menu_items);
 
 	//corner-up-left
-	
+
 	const reply_butt = document.createElement("button");
 	const reply_icon = feather.icons["corner-up-left"].toSvg();
 	reply_butt.insertAdjacentHTML("afterbegin", reply_icon);
@@ -83,7 +83,7 @@ function create_message_element(message) {
 	var hours = date.getHours();
 	var minutes = "0" + date.getMinutes();
 	var seconds = "0" + date.getSeconds();
-	var formattedTime = document.createTextNode(day + "/" + (parseInt(date.getMonth())+1) + "/" + date.getFullYear() + " " +hours + ':' + minutes.slice(-2));
+	var formattedTime = document.createTextNode(day + "/" + (parseInt(date.getMonth()) + 1) + "/" + date.getFullYear() + " " + hours + ':' + minutes.slice(-2));
 	datetime.appendChild(formattedTime);
 	top.appendChild(datetime);
 
@@ -91,7 +91,7 @@ function create_message_element(message) {
 
 	let lines = message.text.split("\n");
 	for (let i = 0; i < lines.length; i++) {
-		if (lines[i] == "" && i != 0 && i != lines.length-1) {
+		if (lines[i] == "" && i != 0 && i != lines.length - 1) {
 			message_content.appendChild(document.createElement("br"));
 			continue
 		}
@@ -128,14 +128,35 @@ function checkVisible(elm) {
 	return !(rect.bottom < 0 || rect.top - viewHeight >= 0);
 }
 
+function push_notification(username, channel, content) {
+	if (document.hidden) {
+		console.log("hidden");
+		if (!("Notification" in window)) {
+			// Check if the browser supports notifications
+			console.log("This browser does not support desktop notification");
+		} else if (Notification.permission === "granted") {
+			// const notification = new Notification(username+" "+channel, { body: content, icon: img });
+			const notification = new Notification(username+" "+channel, { body: content });
+		}
+	}
+}
+
 function handle_NewMessage(message) {
 	const chat = document.getElementById("chat");
 
 	if (oldest_message == null && message.NewMessages.length > 0) {
-		oldest_message = message.NewMessages[0].id;
+		oldest_message = message.NewMessages[0].id; //message.text
 	}
 
 	for (let i = 0; i < message.NewMessages.length; i++) {
+
+		if (message.NewMessages[0].sender != uid) {
+			let name = uname_map[message.NewMessages[0].sender];
+			push_notification(name, "#general", message.NewMessages[0].text);
+		}
+
+
+
 		let para = create_message_element(message.NewMessages[i]);
 		if (chat.lastChild != null && chat.lastChild.dataset != null) {
 
@@ -288,6 +309,29 @@ async function establish_connection() {
 		disconnected();
 	}
 }
+
+function notifyMe() {
+	if (!("Notification" in window)) {
+		// Check if the browser supports notifications
+		console.log("This browser does not support desktop notification");
+	} else if (Notification.permission === "granted") {
+		// Check whether notification permissions have already been granted;
+		// if so, create a notification
+		// const notification = new Notification("Hi there!");
+		// …
+	} else if (Notification.permission !== "denied") {
+		// We need to ask the user for permission
+		Notification.requestPermission();
+		// .then((permission) => {
+		// 	// If the user accepts, let's create a notification
+		// 	if (permission === "granted") {
+		// 		const notification = new Notification("Hi there!");
+		// 		// …
+		// 	}
+		// });
+	}
+}
+
 function login(e) {
 	e.preventDefault();
 
@@ -298,6 +342,8 @@ function login(e) {
 	creds = new Auth(formData.username, formData.password);
 	val = JSON.stringify(new Transmission("Auth", creds));
 	serverConn.send(val);
+
+	notifyMe();
 
 	return false;
 }
@@ -345,8 +391,8 @@ function initEvents() {
 	document.getElementById("message_input").addEventListener("keypress", prevent, false);
 	document.getElementById("login_form").addEventListener("submit", login, false);
 	document.getElementById("signup_form").addEventListener("submit", signup, false);
-	
-	feather.replace({'stroke-width': 2, 'color': '#ffffff'});
+
+	feather.replace({ 'stroke-width': 2, 'color': '#ffffff' });
 	establish_connection();
 	prompt_auth();
 }

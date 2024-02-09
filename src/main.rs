@@ -1,6 +1,6 @@
 //gaterdile
-#![recursion_limit = "2048"]
-#![type_length_limit = "2048"]
+#![recursion_limit = "4096"]
+#![type_length_limit = "4096"]
 #[macro_use]
 extern crate rocket;
 
