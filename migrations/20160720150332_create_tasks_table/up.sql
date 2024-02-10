@@ -5,17 +5,11 @@ CREATE TABLE users (
 	password	TEXT
 );
 
--- CREATE TABLE usernames (
--- 	userid		INTEGER PRIMARY KEY NOT NULL UNIQUE,
--- 	username	TEXT NOT NULL UNIQUE
--- );
-
 CREATE TABLE servers (
 	id			INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
 	nickname	TEXT,
 	owner		INTEGER NOT NULL,
 	FOREIGN KEY(owner) REFERENCES users(id)
-	-- emojis		BLOB	--vec of optional structs with the name and attachment id of an emoji, delete attachment and set to none when deleting emoji
 );
 
 CREATE TABLE channels (
@@ -78,5 +72,5 @@ CREATE TABLE channel_events (
 	FOREIGN KEY(user) REFERENCES users(id) ON DELETE CASCADE
 	FOREIGN KEY(reaction) REFERENCES reactions(id) ON DELETE CASCADE
 	FOREIGN KEY(message) REFERENCES messages(id) ON DELETE CASCADE
-	FOREIGN KEY(channel_id) REFERENCES channels(id) ON DELETE CASCADE
+	-- FOREIGN KEY(channel_id) REFERENCES channels(id) ON DELETE CASCADE
 );
