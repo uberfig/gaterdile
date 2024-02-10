@@ -273,7 +273,7 @@ use db_schema::{
     // usernames, users,
     users,
 };
-use diesel::{prelude::*, result::Error, sql_query, sql_types::Integer};
+use diesel::{prelude::*, result::Error, sql_types::Integer};
 
 #[derive(QueryableByName)]
 pub struct InsertedRowId {
