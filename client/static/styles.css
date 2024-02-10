@@ -56,7 +56,8 @@
 }
 
 .message {
-    word-break: break-all;
+    /* word-break: break-all; */
+    word-break: break-word;
     padding-bottom: 10px;
     padding-left: 16px;
     padding-right: 16px;
@@ -176,10 +177,18 @@
     background-color: #383a40;
     padding: 8px;
     /* white-space: pre-wrap; */
-    white-space: pre-line;
-    /* white-space: break-spaces; */
+    /* white-space: pre-line; */
+    white-space: break-spaces;
     border-radius: 8px;
-    width: 100%;
+    width: calc(100% - 6px);
+    border: 3px solid transparent;
+}
+
+.text_input:focus {
+    outline: none !important;
+    /* border: 2px solid #149262; */
+    border-color: #149262;
+    /* border-color: #27b17c; */
 }
 
 .auth_prompt {
