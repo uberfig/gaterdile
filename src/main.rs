@@ -6,6 +6,7 @@ extern crate rocket;
 
 use std::time::Duration;
 
+use gaterdile::db_types::ServerMember;
 use gaterdile::transmission::{
     ServerInfoData, Transmission, TransmissionMessage, TransmissionType,
 };
@@ -29,7 +30,7 @@ use rocket::{
     Rocket,
 };
 
-use gaterdile::db::{AuthErr, DbConn, InsertError, ServerMember, User, UserAuth};
+use gaterdile::db::{AuthErr, DbConn, InsertError, User, UserAuth};
 use rocket_ws as ws;
 
 async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
@@ -207,11 +208,11 @@ async fn handle_join_server(
     stream: &mut ws::stream::DuplexStream,
 ) {
     let a = conn
-        .join_server(ServerMember {
+        .join_server(
             server_id,
             userid,
-            nickname: None,
-        })
+            None,
+        )
         .await;
     let _ = TransmissionType::JoinServerResult(a)
         .wrap_into_transmission()

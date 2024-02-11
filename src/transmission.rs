@@ -1,9 +1,46 @@
-use crate::db::{AuthErr, Channel, InsertError, JoinServerResult, Message, ServerMember, UserAuth};
+use crate::db_types::{Message, ServerMember};
 use rocket::{
     futures::SinkExt,
     serde::{Deserialize, Serialize},
 };
 use rocket_ws as ws;
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TransmissionChannel {
+    pub id: Option<i32>,
+    pub server: i32,
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum InsertError {
+    Success(usize),
+    UsernameTaken,
+    DbError,
+    InvalidPassword,
+    InvalidUsername,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum AuthErr {
+    Success(i32),
+    InvalidUsername,
+    InvalidPassword,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum JoinServerResult {
+    Success(i32),
+    AlreadyInServer,
+    NotAuthorised,
+    Failure,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct UserAuth {
+    pub username: String,
+    pub password: String,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 struct NewMessage {
@@ -68,7 +105,12 @@ impl TransmissionMessage {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ServerInfoData {
     pub users: Vec<ServerMember>,
-    pub channels: Vec<Channel>,
+    pub channels: Vec<TransmissionChannel>,
+}
+
+pub enum Event {
+    ChannelEvent,
+    ServerEvent,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

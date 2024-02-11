@@ -46,9 +46,12 @@
 
 .datetime {
     color: rgba(231, 230, 216, 0.822);
+    padding-left: 1em;
+    font-size: 0.8em;
 }
 
 .message_top {
+    padding-bottom: 0.3em;
     p {
         display: inline;
     }

@@ -74,3 +74,13 @@ CREATE TABLE channel_events (
 	FOREIGN KEY(message) REFERENCES messages(id) ON DELETE CASCADE
 	-- FOREIGN KEY(channel_id) REFERENCES channels(id) ON DELETE CASCADE
 );
+
+CREATE TABLE server_events (
+	id				INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
+	server_id		INTEGER NOT NULL,
+	timestamp		BIGINT NOT NULL,
+	event_type		INTEGER NOT NULL,
+	user			INTEGER,
+	deleted			INTEGER,
+	FOREIGN KEY(user) REFERENCES users(id) ON DELETE CASCADE
+);

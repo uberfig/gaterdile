@@ -2,31 +2,8 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-// use chrono::NaiveDateTime;
-use crate::schema::db_schema::{self, channel_events, channels, server_members};
+use crate::{db_types::{Channel, ChannelEvent, ChannelEventType, Message, ServerMember}, schema::db_schema::{self, channel_events, channels, server_members}, transmission::{AuthErr, InsertError, JoinServerResult, UserAuth}};
 use rocket::serde::{Deserialize, Serialize};
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct UserAuth {
-    pub username: String,
-    pub password: String,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum InsertError {
-    Success(usize),
-    UsernameTaken,
-    DbError,
-    InvalidPassword,
-    InvalidUsername,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum AuthErr {
-    Success(i32),
-    InvalidUsername,
-    InvalidPassword,
-}
 
 #[derive(Deserialize, Queryable, Insertable, Debug)]
 #[diesel(table_name = db_schema::users)]
@@ -36,13 +13,6 @@ pub struct User {
     pub nickname: Option<String>,
     password: String,
 }
-
-// #[derive(Deserialize, Queryable, Insertable, Debug)]
-// #[diesel(table_name = schema::usernames)]
-// pub struct UsernameMap {
-//     pub userid: i32,
-//     pub username: String,
-// }
 
 impl User {
     pub async fn insert(new_user: UserAuth, conn: &DbConn) -> InsertError {
@@ -97,172 +67,7 @@ impl User {
     }
 }
 
-#[derive(Deserialize, Queryable, Insertable, Debug, 
-    Serialize, Clone, QueryableByName, Identifiable, Selectable)]
-#[diesel(primary_key(id))]
-#[diesel(table_name = db_schema::messages)]
-#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
-pub struct Message {
-    pub id: Option<i32>,
-    pub sender: i32,
-    pub server: i32,
-    pub channel: i32,
-    pub reply: Option<i32>,
-    pub text: String,
-    // pub emoji: Option<Vec<u8>>,
-    pub timestamp: i64,
-}
 
-
-#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = db_schema::server_members)]
-pub struct ServerMember {
-    // pub id: Option<i32>,
-    pub server_id: i32,
-    pub userid: i32,
-    pub nickname: Option<String>,
-}
-
-#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = db_schema::channels)]
-pub struct Channel {
-    pub id: Option<i32>,
-    pub server: i32,
-    pub name: String,
-}
-
-#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = db_schema::channel_events)]
-pub struct ChannelEvent {
-    pub id: Option<i32>,
-    pub channel_id: i32,
-    pub timestamp: i64,
-    pub event_type: i32,
-    pub message: Option<i32>,
-    pub reaction: Option<i32>,
-    pub user: Option<i32>,
-    pub deleted: Option<i32>, //used for the id of deleted content
-}
-
-pub enum ChannelEventType {
-    NewMessage(i32),
-    MessageDeleted(i32),
-    NewReaction(i32),
-    DeleteReaction(i32),
-    UserJoin(i32),
-    UserLeave(i32),
-    Error,
-}
-
-impl ChannelEvent {
-    fn to_event_type(&self) -> ChannelEventType {
-        match self.event_type {
-            0 => ChannelEventType::NewMessage(self.message.unwrap()),
-            1 => ChannelEventType::MessageDeleted(self.deleted.unwrap()),
-            2 => ChannelEventType::NewReaction(self.reaction.unwrap()),
-            3 => ChannelEventType::DeleteReaction(self.deleted.unwrap()),
-            4 => ChannelEventType::UserJoin(self.user.unwrap()),
-            5 => ChannelEventType::UserLeave(self.user.unwrap()),
-            _ => ChannelEventType::Error,
-        }
-    }
-}
-
-impl ChannelEventType {
-    fn to_int(&self) -> i32 {
-        match self {
-            ChannelEventType::NewMessage(_) => 0,
-            ChannelEventType::MessageDeleted(_) => 1,
-            ChannelEventType::NewReaction(_) => 2,
-            ChannelEventType::DeleteReaction(_) => 3,
-            ChannelEventType::UserJoin(_) => 4,
-            ChannelEventType::UserLeave(_) => 5,
-            ChannelEventType::Error => -1,
-        }
-    }
-    fn to_event(&self, channel_id: i32, timestamp: i64) -> ChannelEvent {
-        match self {
-            ChannelEventType::NewMessage(x) => ChannelEvent {
-                id: None,
-                channel_id,
-                timestamp,
-                event_type: self.to_int(),
-                message: Some(*x),
-                reaction: None,
-                user: None,
-                deleted: None,
-            },
-            ChannelEventType::MessageDeleted(x) => ChannelEvent {
-                id: None,
-                channel_id,
-                timestamp,
-                event_type: self.to_int(),
-                message: None,
-                reaction: None,
-                user: None,
-                deleted: Some(*x),
-            },
-            ChannelEventType::NewReaction(x) => ChannelEvent {
-                id: None,
-                channel_id,
-                timestamp,
-                event_type: self.to_int(),
-                message: None,
-                reaction: Some(*x),
-                user: None,
-                deleted: None,
-            },
-            ChannelEventType::DeleteReaction(x) => ChannelEvent {
-                id: None,
-                channel_id,
-                timestamp,
-                event_type: self.to_int(),
-                message: None,
-                reaction: None,
-                user: None,
-                deleted: Some(*x),
-            },
-            ChannelEventType::UserJoin(x) => ChannelEvent {
-                id: None,
-                channel_id,
-                timestamp,
-                event_type: self.to_int(),
-                message: None,
-                reaction: None,
-                user: Some(*x),
-                deleted: None,
-            },
-            ChannelEventType::UserLeave(x) => ChannelEvent {
-                id: None,
-                channel_id,
-                timestamp,
-                event_type: self.to_int(),
-                message: None,
-                reaction: None,
-                user: Some(*x),
-                deleted: None,
-            },
-            ChannelEventType::Error => ChannelEvent {
-                id: None,
-                channel_id,
-                timestamp,
-                event_type: self.to_int(),
-                message: None,
-                reaction: None,
-                user: None,
-                deleted: None,
-            },
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum JoinServerResult {
-    Success(i32),
-    AlreadyInServer,
-    NotAuthorised,
-    Failure,
-}
 
 #[database("diesel")]
 pub struct DbConn(diesel::SqliteConnection);
@@ -339,38 +144,12 @@ impl DbConn {
 
                 let _a = diesel::insert_into(db_schema::messages::table)
                 .values(message)
-                // .execute(c);
                 .get_result::<Message>(c);
-
-                
-            // let last_id = sql_function!("SELECT last_insert_rowid()");
-                // let last_id = sql_query("");
-
-                // let result = diesel::sql_query("SELECT last_insert_rowid()").first::<i32>(c);
-                // sql_function!(fn select_last() -> i32);
-
-
-                // let x: usize = sql_query("SELECT last_insert_rowid()").get_result(c).unwrap();
-
-
-                // let b = diesel::select(db_schema::messages::table).first(conn).unwrap();
-                // diesel::result::QueryResult::Ok(Ok(_a))
                 diesel::result::QueryResult::Ok(_a)
-                // Ok(Ok(x))
+
             })
         })
         .await?;
-    
-
-    // let _a = self.run(move |c| {
-    //     diesel::insert_into(db_schema::messages::table)
-    //         .values(message)
-    //         // .execute(c)
-    //         .get_result::<(Option<i32>, i32, i64, i32, Option<i32>, Option<i32>, Option<i32>, Option<i32>,)>(c)
-    // })
-    // .await;
-
-    // let err = todo!();
 
         match &err_t {
             Ok(x) => {
@@ -386,7 +165,7 @@ impl DbConn {
         // return Ok(1);
     }
 
-    pub async fn get_channel_messages(
+    async fn get_channel_messages(
         &self,
         server_id: i32,
         channel_id: i32,
@@ -416,7 +195,7 @@ impl DbConn {
         val
     }
 
-    pub async fn get_messages_prior(
+    async fn get_messages_prior(
         &self,
         server_id: i32,
         channel_id: i32,
@@ -492,7 +271,7 @@ impl DbConn {
     //     .await
     // }
 
-    pub async fn get_messages_since_timestamp_and_id(
+    async fn get_messages_since_timestamp_and_id(
         &self,
         server_id: i32,
         channel_id: i32,
@@ -579,7 +358,9 @@ impl DbConn {
         .await
     }
 
-    pub async fn join_server(&self, message: ServerMember) -> JoinServerResult {
+    pub async fn join_server(&self, server_id: i32, userid: i32, nickname: Option<String>) -> JoinServerResult {
+
+        let message: ServerMember = ServerMember { server_id, userid, nickname };
         let e = self
             .run(move |c| {
                 diesel::insert_into(db_schema::server_members::table)
@@ -589,7 +370,10 @@ impl DbConn {
             .await;
 
         match e {
-            Ok(x) => JoinServerResult::Success(x as i32),
+            Ok(x) => {
+
+                JoinServerResult::Success(x as i32)
+            },
             Err(x) => {
                 dbg!(x);
                 JoinServerResult::AlreadyInServer

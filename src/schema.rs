@@ -85,4 +85,14 @@ pub mod db_schema {
             deleted -> Nullable<Integer>,
         }
     }
+    table! {
+        server_events {
+            id -> Nullable<Integer>,
+            server_id -> Integer,
+            timestamp -> BigInt,
+            event_type -> Integer,
+            user -> Nullable<Integer>,
+            deleted -> Nullable<Integer>,
+        }
+    }
 }
