@@ -1,8 +1,19 @@
-use crate::{schema::db_schema::{self}, transmission::{TransmissionChannel, TransmissionMessage}};
+use crate::{
+    db::DbConn, schema::db_schema, transmission::{TransmissionChannel, TransmissionMessage}
+};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Queryable, Insertable, Debug, 
-    Serialize, Clone, QueryableByName, Identifiable, Selectable)]
+#[derive(
+    Deserialize,
+    Queryable,
+    Insertable,
+    Debug,
+    Serialize,
+    Clone,
+    QueryableByName,
+    Identifiable,
+    Selectable,
+)]
 #[diesel(primary_key(id))]
 #[diesel(table_name = db_schema::messages)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
@@ -16,7 +27,6 @@ pub struct Message {
     // pub emoji: Option<Vec<u8>>,
     pub timestamp: i64,
 }
-
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
 #[diesel(table_name = db_schema::server_members)]
@@ -35,9 +45,23 @@ pub struct Channel {
     pub name: String,
 }
 
+impl From<Channel> for TransmissionChannel {
+    fn from(value: Channel) -> Self {
+        TransmissionChannel {
+            id: value.id,
+            server: value.server,
+            name: value.name,
+        }
+    }
+}
+
 impl Channel {
     pub fn to_transmission(self) -> TransmissionChannel {
-        TransmissionChannel { id: self.id, server: self.server, name: self.name }
+        TransmissionChannel {
+            id: self.id,
+            server: self.server,
+            name: self.name,
+        }
     }
 }
 
@@ -75,6 +99,12 @@ impl ChannelEvent {
             5 => ChannelEventType::UserLeave(self.user.unwrap()),
             _ => ChannelEventType::Error,
         }
+    }
+    pub fn is_message(&self) -> bool {
+        return self.event_type == 0;
+    }
+    pub async fn get_message(self, conn: &DbConn) -> Message {
+        conn.get_msg_by_id(self.message.expect("tried to get message when msg id is none")).await.unwrap()
     }
 }
 
@@ -165,4 +195,3 @@ impl ChannelEventType {
         }
     }
 }
-

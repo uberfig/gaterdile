@@ -1,8 +1,12 @@
+use crate::{
+    db_types::{Channel, ChannelEvent, ChannelEventType, Message, ServerMember},
+    schema::db_schema::{self, channel_events, channels, server_members},
+    transmission::{AuthErr, InsertError, JoinServerResult, UserAuth},
+};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-use crate::{db_types::{Channel, ChannelEvent, ChannelEventType, Message, ServerMember}, schema::db_schema::{self, channel_events, channels, server_members}, transmission::{AuthErr, InsertError, JoinServerResult, UserAuth}};
 use rocket::serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Queryable, Insertable, Debug)]
@@ -67,8 +71,6 @@ impl User {
     }
 }
 
-
-
 #[database("diesel")]
 pub struct DbConn(diesel::SqliteConnection);
 use db_schema::{
@@ -83,7 +85,7 @@ use diesel::{prelude::*, result::Error, sql_types::Integer};
 #[derive(QueryableByName)]
 pub struct InsertedRowId {
     #[sql_type = "Integer"]
-    pub id: i32
+    pub id: i32,
 }
 
 impl DbConn {
@@ -137,26 +139,29 @@ impl DbConn {
         let timestamp = message.timestamp;
         let channel_id = message.channel;
 
-        
-        let err_t = self.run(move |c| {
-            
-            c.transaction(|c|{
-
-                let _a = diesel::insert_into(db_schema::messages::table)
-                .values(message)
-                .get_result::<Message>(c);
-                diesel::result::QueryResult::Ok(_a)
-
+        let err_t = self
+            .run(move |c| {
+                c.transaction(|c| {
+                    let _a = diesel::insert_into(db_schema::messages::table)
+                        .values(message)
+                        .get_result::<Message>(c);
+                    diesel::result::QueryResult::Ok(_a)
+                })
             })
-        })
-        .await?;
+            .await?;
 
         match &err_t {
             Ok(x) => {
                 println!("inserting {}", x.id.unwrap());
-                let y = self.create_channel_event(channel_id, timestamp, ChannelEventType::NewMessage(x.id.unwrap())).await;
+                let y = self
+                    .create_channel_event(
+                        channel_id,
+                        timestamp,
+                        ChannelEventType::NewMessage(x.id.unwrap()),
+                    )
+                    .await;
                 let _restut = y.expect("unable to insert message event for new message");
-            },
+            }
             Err(_) => todo!(),
         }
 
@@ -279,19 +284,20 @@ impl DbConn {
         id: i32,
         amount: i64,
     ) -> Result<Vec<Message>, diesel::result::Error> {
-        let mut a = self.run(move |conn| {
-            messages::dsl::messages
-                .filter(messages::dsl::server.eq(server_id))
-                .filter(messages::dsl::channel.eq(channel_id))
-                .filter(messages::dsl::timestamp.ge(since))
-                .order(messages::dsl::timestamp.desc())
-                .limit(amount)
-                // .order(messages::dsl::id.desc())
-                // .order(messages::dsl::timestamp.asc())
-                .filter(messages::dsl::id.ne(id))
-                .load::<Message>(conn)
-        })
-        .await;
+        let mut a = self
+            .run(move |conn| {
+                messages::dsl::messages
+                    .filter(messages::dsl::server.eq(server_id))
+                    .filter(messages::dsl::channel.eq(channel_id))
+                    .filter(messages::dsl::timestamp.ge(since))
+                    .order(messages::dsl::timestamp.desc())
+                    .limit(amount)
+                    // .order(messages::dsl::id.desc())
+                    // .order(messages::dsl::timestamp.asc())
+                    .filter(messages::dsl::id.ne(id))
+                    .load::<Message>(conn)
+            })
+            .await;
 
         match &mut a {
             Ok(x) => {
@@ -358,9 +364,17 @@ impl DbConn {
         .await
     }
 
-    pub async fn join_server(&self, server_id: i32, userid: i32, nickname: Option<String>) -> JoinServerResult {
-
-        let message: ServerMember = ServerMember { server_id, userid, nickname };
+    pub async fn join_server(
+        &self,
+        server_id: i32,
+        userid: i32,
+        nickname: Option<String>,
+    ) -> JoinServerResult {
+        let message: ServerMember = ServerMember {
+            server_id,
+            userid,
+            nickname,
+        };
         let e = self
             .run(move |c| {
                 diesel::insert_into(db_schema::server_members::table)
@@ -370,10 +384,7 @@ impl DbConn {
             .await;
 
         match e {
-            Ok(x) => {
-
-                JoinServerResult::Success(x as i32)
-            },
+            Ok(x) => JoinServerResult::Success(x as i32),
             Err(x) => {
                 dbg!(x);
                 JoinServerResult::AlreadyInServer
@@ -388,7 +399,7 @@ impl DbConn {
         event_type: ChannelEventType,
     ) -> Result<usize, diesel::result::Error> {
         let event = event_type.to_event(channel_id, timestamp);
-        
+
         self.run(move |c| {
             diesel::insert_into(db_schema::channel_events::table)
                 .values(event)
@@ -404,16 +415,17 @@ impl DbConn {
         id: i32,
         amount: i64,
     ) -> Result<Vec<ChannelEvent>, diesel::result::Error> {
-        let mut a = self.run(move |conn| {
-            channel_events::dsl::channel_events
-                .filter(channel_events::dsl::channel_id.eq(channel_id))
-                .filter(channel_events::dsl::timestamp.ge(since))
-                .order(channel_events::dsl::timestamp.desc())
-                .limit(amount)
-                .filter(channel_events::dsl::id.ne(id))
-                .load::<ChannelEvent>(conn)
-        })
-        .await;
+        let mut a = self
+            .run(move |conn| {
+                channel_events::dsl::channel_events
+                    .filter(channel_events::dsl::channel_id.eq(channel_id))
+                    .filter(channel_events::dsl::timestamp.ge(since))
+                    .order(channel_events::dsl::timestamp.desc())
+                    .limit(amount)
+                    .filter(channel_events::dsl::id.ne(id))
+                    .load::<ChannelEvent>(conn)
+            })
+            .await;
 
         match &mut a {
             Ok(x) => {
@@ -423,5 +435,69 @@ impl DbConn {
         }
 
         a
+    }
+
+    pub async fn get_events_prior(
+        &self,
+        // server_id: i32,
+        channel_id: i32,
+        prior_to: i64,
+        last_msg: i32,
+        amount: i64,
+    ) -> Result<Vec<ChannelEvent>, Error> {
+        let mut val = self
+            .run(move |conn| {
+                channel_events::dsl::channel_events
+                    // .filter(messages::dsl::server.eq(server_id))
+                    .filter(channel_events::dsl::channel_id.eq(channel_id))
+                    .filter(channel_events::dsl::timestamp.le(prior_to))
+                    .filter(channel_events::dsl::id.ne(last_msg))
+                    .order(channel_events::dsl::timestamp.asc())
+                    .limit(amount)
+                    // .order(messages::dsl::id.desc())
+                    // .order(messages::dsl::timestamp.asc())
+                    .load::<ChannelEvent>(conn)
+                // .order(messages::dsl::timestamp.asc())
+            })
+            .await;
+
+        match &mut val {
+            Ok(x) => {
+                x.sort_unstable_by_key(|y| y.timestamp);
+            }
+            Err(_) => {}
+        }
+
+        val
+    }
+
+    pub async fn get_channel_events(
+        &self,
+        // server_id: i32,
+        channel_id: i32,
+        amount: i64,
+    ) -> Result<Vec<ChannelEvent>, Error> {
+        let mut val = self
+            .run(move |conn| {
+                channel_events::dsl::channel_events
+                    // .filter(messages::dsl::server.eq(server_id))
+                    .filter(channel_events::dsl::channel_id.eq(channel_id))
+                    .order(channel_events::dsl::timestamp.desc())
+                    .limit(amount)
+                    // .order(messages::dsl::id.desc())
+                    // .order(messages::dsl::timestamp.asc())
+                    .load::<ChannelEvent>(conn)
+                // .order(messages::dsl::timestamp.asc())
+            })
+            .await;
+
+        match &mut val {
+            Ok(x) => {
+                x.sort_unstable_by_key(|y| y.timestamp);
+            }
+            Err(_) => {}
+        }
+
+        val
     }
 }

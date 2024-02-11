@@ -108,10 +108,13 @@ pub struct ServerInfoData {
     pub channels: Vec<TransmissionChannel>,
 }
 
-pub enum Event {
-    ChannelEvent,
-    ServerEvent,
-}
+// pub enum Event {
+//     ChannelEvent,
+//     ServerEvent,
+// }
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct NewEvents {}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum TransmissionType {

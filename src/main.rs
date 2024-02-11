@@ -6,11 +6,12 @@ extern crate rocket;
 
 use std::time::Duration;
 
-use gaterdile::db_types::ServerMember;
+use gaterdile::db_types::{Channel, ChannelEvent, ServerMember};
 use gaterdile::transmission::{
-    ServerInfoData, Transmission, TransmissionMessage, TransmissionType,
+    AuthErr, InsertError, ServerInfoData, Transmission, TransmissionMessage, TransmissionType, UserAuth
 };
 
+use rocket::futures;
 use rocket::tokio::time::interval;
 use rocket::tokio::{self, join};
 
@@ -30,7 +31,7 @@ use rocket::{
     Rocket,
 };
 
-use gaterdile::db::{AuthErr, DbConn, InsertError, User, UserAuth};
+use gaterdile::db::{DbConn, User};
 use rocket_ws as ws;
 
 async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
@@ -84,7 +85,7 @@ async fn handle_send_message(
 
     props.listening_server = Some(props.listening_server.unwrap_or(t_msg.server));
     props.listening_channel = Some(props.listening_server.unwrap_or(t_msg.channel));
-    fetch_new_messages(props, conn, stream).await;
+    fetch_new_events(props, conn, stream).await;
 }
 
 async fn handle_auth(
@@ -121,7 +122,7 @@ async fn handle_get_channel(
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let a = conn.get_channel_messages(server_id, channel_id, 40).await;
+    let a = conn.get_channel_events(channel_id, 40).await;
 
     if let Ok(x) = a {
         props.listening_channel = Some(channel_id);
@@ -139,8 +140,10 @@ async fn handle_get_channel(
                 // println!("no messages")
             }
         }
+        let messages = x.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_message(conn));
+        let messages = futures::future::join_all(messages).await;
 
-        let _ = TransmissionType::NewMessages(x)
+        let _ = TransmissionType::NewMessages(messages)
             .wrap_into_transmission()
             .send(stream)
             .await;
@@ -168,7 +171,7 @@ async fn handle_get_prior(
     };
 
     let a = conn
-        .get_messages_prior(server_id, channel_id, message.timestamp, last_msg, 40)
+        .get_events_prior(server_id, message.timestamp, last_msg, 40)
         .await;
 
     if let Ok(x) = a {
@@ -178,7 +181,9 @@ async fn handle_get_prior(
                 .send(stream)
                 .await;
         } else {
-            let _ = TransmissionType::PriorMessages(x)
+            let messages = x.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_message(conn));
+            let messages = futures::future::join_all(messages).await;
+            let _ = TransmissionType::PriorMessages(messages)
                 .wrap_into_transmission()
                 .send(stream)
                 .await;
@@ -192,7 +197,11 @@ async fn handle_get_server(server_id: i32, conn: &DbConn, stream: &mut ws::strea
     let (members, channels) = join!(members_fut, channels_fut);
     let data = ServerInfoData {
         users: members.unwrap_or(vec![]),
-        channels: channels.unwrap_or(vec![]),
+        channels: channels
+            .unwrap_or_default()
+            .into_iter()
+            .map(Channel::into)
+            .collect(),
     };
 
     let _ = TransmissionType::ServerInfo(data)
@@ -207,13 +216,7 @@ async fn handle_join_server(
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let a = conn
-        .join_server(
-            server_id,
-            userid,
-            None,
-        )
-        .await;
+    let a = conn.join_server(server_id, userid, None).await;
     let _ = TransmissionType::JoinServerResult(a)
         .wrap_into_transmission()
         .send(stream)
@@ -307,7 +310,7 @@ async fn handle_transmission(
     }
 }
 
-async fn fetch_new_messages(
+async fn fetch_new_events(
     props: &mut ConnectionProps,
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
@@ -328,44 +331,43 @@ async fn fetch_new_messages(
         return;
     }
 
-    match props.last_sent_timestamp {
-        Some(x) => {
-            let since = conn
-                .get_messages_since_timestamp_and_id(
-                    props.listening_server.unwrap(),
-                    props.listening_channel.unwrap(),
-                    x,
-                    props.last_sent_id.unwrap(),
-                    10,
-                )
-                .await;
-            match since {
-                Ok(since) => {
-                    let newlast = since.get(since.len().wrapping_sub(1));
-                    match newlast {
-                        Some(y) => {
-                            if y.id == props.last_sent_id {
-                                return;
-                            }
-                            println!("newlast id: ");
-                            dbg!(y.id);
+    let x = props.last_sent_timestamp.unwrap();
 
-                            props.last_sent_timestamp = Some(y.timestamp);
-                            props.last_sent_id = Some(y.id.unwrap());
-                            let _ = TransmissionType::NewMessages(since)
-                                .wrap_into_transmission()
-                                .send(stream)
-                                .await;
-                        }
-                        None => {
-                            // println!("no new messages")
-                        }
+    let since = conn
+        .get_events_since_timestamp_and_id(
+            props.listening_channel.unwrap(),
+            x,
+            props.last_sent_id.unwrap(),
+            10,
+        )
+        .await;
+
+    match since {
+        Ok(since) => {
+            let newlast = since.get(since.len().wrapping_sub(1));
+            match newlast {
+                Some(y) => {
+                    if y.id == props.last_sent_id {
+                        return;
                     }
+                    println!("newlast id: ");
+                    dbg!(y.id);
+
+                    props.last_sent_timestamp = Some(y.timestamp);
+                    props.last_sent_id = Some(y.id.unwrap());
+                    let messages = since.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_message(conn));
+                    let messages = futures::future::join_all(messages).await;
+                    let _ = TransmissionType::NewMessages(messages)
+                        .wrap_into_transmission()
+                        .send(stream)
+                        .await;
+                } 
+                None => {
+                    // println!("no new messages")
                 }
-                Err(e) => println!("no new messages or db errr {}", e),
             }
         }
-        None => println!("last sent not set!"),
+        Err(e) => println!("no new messages or db errr {}", e),
     }
 }
 
@@ -389,7 +391,7 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
 						_ = interval.tick() => {
 							// Send message every 10 seconds
 							if props.authenticated {
-								fetch_new_messages(&mut props, &conn, &mut stream).await;
+								fetch_new_events(&mut props, &conn, &mut stream).await;
 							}
 						}
 						Some(Ok(message)) = stream.next() => {
