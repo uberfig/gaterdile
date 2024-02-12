@@ -138,6 +138,7 @@ impl DbConn {
     pub async fn send_message(&self, message: Message) -> Result<Message, diesel::result::Error> {
         let timestamp = message.timestamp;
         let channel_id = message.channel;
+        let server_id = message.server;
 
         let err_t = self
             .run(move |c| {
@@ -156,6 +157,7 @@ impl DbConn {
                 let y = self
                     .create_channel_event(
                         channel_id,
+                        server_id,
                         timestamp,
                         ChannelEventType::NewMessage(x.id.unwrap()),
                     )
@@ -395,10 +397,11 @@ impl DbConn {
     pub async fn create_channel_event(
         &self,
         channel_id: i32,
+        server_id: i32,
         timestamp: i64,
         event_type: ChannelEventType,
     ) -> Result<usize, diesel::result::Error> {
-        let event = event_type.to_event(channel_id, timestamp);
+        let event = event_type.to_event(channel_id, server_id, timestamp);
 
         self.run(move |c| {
             diesel::insert_into(db_schema::channel_events::table)

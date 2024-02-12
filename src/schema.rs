@@ -77,6 +77,7 @@ pub mod db_schema {
         channel_events {
             id -> Nullable<Integer>,
             channel_id -> Integer,
+            server_id -> Integer,
             timestamp -> BigInt,
             event_type -> Integer,
             message -> Nullable<Integer>,

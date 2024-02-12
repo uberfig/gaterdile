@@ -70,6 +70,7 @@ impl Channel {
 pub struct ChannelEvent {
     pub id: Option<i32>,
     pub channel_id: i32,
+    pub server_id: i32,
     pub timestamp: i64,
     pub event_type: i32,
     pub message: Option<i32>,
@@ -120,11 +121,12 @@ impl ChannelEventType {
             ChannelEventType::Error => -1,
         }
     }
-    pub fn to_event(&self, channel_id: i32, timestamp: i64) -> ChannelEvent {
+    pub fn to_event(&self, channel_id: i32, server_id:i32, timestamp: i64) -> ChannelEvent {
         match self {
             ChannelEventType::NewMessage(x) => ChannelEvent {
                 id: None,
                 channel_id,
+                server_id,
                 timestamp,
                 event_type: self.to_int(),
                 message: Some(*x),
@@ -135,6 +137,7 @@ impl ChannelEventType {
             ChannelEventType::MessageDeleted(x) => ChannelEvent {
                 id: None,
                 channel_id,
+                server_id,
                 timestamp,
                 event_type: self.to_int(),
                 message: None,
@@ -145,6 +148,7 @@ impl ChannelEventType {
             ChannelEventType::NewReaction(x) => ChannelEvent {
                 id: None,
                 channel_id,
+                server_id,
                 timestamp,
                 event_type: self.to_int(),
                 message: None,
@@ -155,6 +159,7 @@ impl ChannelEventType {
             ChannelEventType::DeleteReaction(x) => ChannelEvent {
                 id: None,
                 channel_id,
+                server_id,
                 timestamp,
                 event_type: self.to_int(),
                 message: None,
@@ -165,6 +170,7 @@ impl ChannelEventType {
             ChannelEventType::UserJoin(x) => ChannelEvent {
                 id: None,
                 channel_id,
+                server_id,
                 timestamp,
                 event_type: self.to_int(),
                 message: None,
@@ -175,6 +181,7 @@ impl ChannelEventType {
             ChannelEventType::UserLeave(x) => ChannelEvent {
                 id: None,
                 channel_id,
+                server_id,
                 timestamp,
                 event_type: self.to_int(),
                 message: None,
@@ -185,6 +192,7 @@ impl ChannelEventType {
             ChannelEventType::Error => ChannelEvent {
                 id: None,
                 channel_id,
+                server_id,
                 timestamp,
                 event_type: self.to_int(),
                 message: None,

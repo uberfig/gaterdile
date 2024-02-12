@@ -63,6 +63,7 @@ CREATE TABLE server_members (
 CREATE TABLE channel_events (
 	id				INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
 	channel_id		INTEGER NOT NULL,
+	server_id		INTEGER NOT NULL,
 	timestamp		BIGINT NOT NULL,
 	event_type		INTEGER NOT NULL,
 	message			INTEGER,

@@ -304,9 +304,13 @@ async fn handle_transmission(
         | TransmissionType::UserServers(_)
         | TransmissionType::JoinServerResult(_)
         | TransmissionType::PriorMessages(_)
-        | TransmissionType::NoMorePrior => {
+        | TransmissionType::NoMorePrior 
+        | TransmissionType::ChannelEvent(_)
+        | TransmissionType::ServerEvent(_)
+        | TransmissionType::UserEvent(_)=> {
             let _ = Transmission::invalid().send(stream).await;
         }
+        
     }
 }
 

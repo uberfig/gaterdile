@@ -49,8 +49,10 @@ struct NewMessage {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct React {
-    pub reaction: String,
+    pub id: i32,
     pub message_id: i32,
+    pub user_id: i32,
+    pub emoji: i32,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -108,13 +110,54 @@ pub struct ServerInfoData {
     pub channels: Vec<TransmissionChannel>,
 }
 
-// pub enum Event {
-//     ChannelEvent,
-//     ServerEvent,
-// }
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ChannelEvent {
+    event_type: String,
+    data: ChannelEventType,
+}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct NewEvents {}
+
+pub enum ChannelEventType {
+    NewMessage(Message),
+    MessageDeleted(i32),
+    NewReaction(React),
+    DeleteReaction(i32),
+    Error,
+}
+
+impl std::fmt::Display for ChannelEventType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ChannelEventType::NewMessage(_) => write!(f, "NewMessage"),
+            ChannelEventType::MessageDeleted(_) => write!(f, "MessageDeleted"),
+            ChannelEventType::NewReaction(_) => write!(f, "NewReaction"),
+            ChannelEventType::DeleteReaction(_) => write!(f, "DeleteReaction"),
+            ChannelEventType::Error => write!(f, "Error"),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ServerEvent {
+    event_type: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum ServerEventType {
+    NewMessage(i32),
+    MessageDeleted(i32),
+    NewReaction(i32),
+    DeleteReaction(i32),
+    UserJoin(i32),
+    UserLeave(i32),
+    Error,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct UserEvent {
+    event_type: String,
+}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum TransmissionType {
@@ -140,6 +183,10 @@ pub enum TransmissionType {
     JoinServerResult(JoinServerResult),
     PriorMessages(Vec<Message>),
     NoMorePrior,
+
+    ChannelEvent(Vec<ChannelEvent>),
+    ServerEvent(Vec<ServerEvent>),
+    UserEvent(Vec<UserEvent>),
 }
 
 impl std::fmt::Display for TransmissionType {
@@ -166,6 +213,9 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::NoMorePrior => write!(f, "NoMorePrior"),
             TransmissionType::GetEmoji(_) => write!(f, "GetEmoji"),
             TransmissionType::GetAttachment(_) => write!(f, "GetAttachment"),
+            TransmissionType::ChannelEvent(_) => write!(f, "ChannelEvent"),
+            TransmissionType::ServerEvent(_) => write!(f, "ServerEvent"),
+            TransmissionType::UserEvent(_) => write!(f, "UserEvent"),
         }
     }
 }
