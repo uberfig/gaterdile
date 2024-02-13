@@ -1,6 +1,7 @@
 use crate::{
-    db::DbConn, schema::db_schema, transmission::{TransmissionChannel, TransmissionMessage}
+    db::DbConn, schema::db_schema, transmission::{self, TransmissionChannel}
 };
+use diesel::result::Error;
 use serde::{Deserialize, Serialize};
 
 #[derive(
@@ -102,10 +103,31 @@ impl ChannelEvent {
         }
     }
     pub fn is_message(&self) -> bool {
-        return self.event_type == 0;
+        self.event_type == 0
     }
     pub async fn get_message(self, conn: &DbConn) -> Message {
         conn.get_msg_by_id(self.message.expect("tried to get message when msg id is none")).await.unwrap()
+    }
+    pub async fn get_concrete(&self, conn: &DbConn) -> Result<transmission::ChannelEvent, Error> {
+        let evt_type = self.to_event_type();
+        match evt_type {
+            ChannelEventType::NewMessage(x) => {
+                let msg = conn.get_msg_by_id(x).await;
+                match msg {
+                    Ok(y) => {
+                        let evt = transmission::ChannelEventType::NewMessage(y);
+                        Ok(transmission::ChannelEvent { event_type: evt.to_string(), data: evt })
+                    },
+                    Err(y) => Err(y),
+                }                
+            },
+            ChannelEventType::MessageDeleted(_) => todo!(),
+            ChannelEventType::NewReaction(_) => todo!(),
+            ChannelEventType::DeleteReaction(_) => todo!(),
+            ChannelEventType::UserJoin(_) => todo!(),
+            ChannelEventType::UserLeave(_) => todo!(),
+            ChannelEventType::Error => todo!(),
+        }
     }
 }
 

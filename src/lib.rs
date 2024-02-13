@@ -10,3 +10,4 @@ pub mod db;
 pub mod db_types;
 pub mod schema;
 pub mod transmission;
+pub mod handlers;

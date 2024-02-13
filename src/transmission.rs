@@ -112,8 +112,8 @@ pub struct ServerInfoData {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ChannelEvent {
-    event_type: String,
-    data: ChannelEventType,
+    pub event_type: String,
+    pub data: ChannelEventType,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -145,10 +145,6 @@ pub struct ServerEvent {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum ServerEventType {
-    NewMessage(i32),
-    MessageDeleted(i32),
-    NewReaction(i32),
-    DeleteReaction(i32),
     UserJoin(i32),
     UserLeave(i32),
     Error,
