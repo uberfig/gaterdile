@@ -15,6 +15,7 @@ this is roughly my todo list for now, it will most likely happen in this order b
 - [ ]  client support for creating servers
 - [ ]  client support for switching channels
 - [ ]  add server unit testing
+- [ ]  0.1 release with stablized sql migration
 
 ## Long term Roadmap
 
