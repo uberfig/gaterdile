@@ -25,5 +25,5 @@ these are very signifigant projects and will probably be a long time out
 
 - [ ]  xmpp support
 - [ ]  web rtc holepunching support
-- [ ]  client audio and videocalling via webrtc 
+- [ ]  client audio and video calling via webrtc 
 
