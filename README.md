@@ -14,6 +14,7 @@ this is roughly my todo list for now, it will most likely happen in this order b
 - [ ]  client support for switching servers
 - [ ]  client support for creating servers
 - [ ]  client support for switching channels
+- [ ]  add server unit testing
 
 ## Long term Roadmap
 
