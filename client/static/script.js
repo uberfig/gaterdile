@@ -184,14 +184,10 @@ function handle_event_NewMessage(message) {
 		oldest_message = message.id; //message.text
 	}
 
-	// for (let i = 0; i < message.NewMessages.length; i++) {
-
 	if (message.sender != uid) {
 		let name = uname_map[message.sender];
 		push_notification(name, "#general", message.text);
 	}
-
-
 
 	let para = create_message_element(message.NewMessage);
 	if (chat.lastChild != null && chat.lastChild.dataset != null) {
@@ -207,8 +203,6 @@ function handle_event_NewMessage(message) {
 	if (checkVisible(chat.lastChild)) {
 		para.scrollIntoView();
 	}
-
-	// }
 }
 
 function handle_PriorMessages(message) {

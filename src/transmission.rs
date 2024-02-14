@@ -170,7 +170,6 @@ pub enum TransmissionType {
     GetAttachment(i32),
     //from server only:
     InvalidTransmission,
-    NewMessages(Vec<Message>),
     RequestAuth,
     AuthResult(AuthErr),
     CreateUserResult(InsertError),
@@ -188,7 +187,6 @@ pub enum TransmissionType {
 impl std::fmt::Display for TransmissionType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            TransmissionType::NewMessages(_) => write!(f, "NewMessages"),
             TransmissionType::SendMessage(_) => write!(f, "SendMessage"),
             TransmissionType::Reaction(_) => write!(f, "Reaction"),
             TransmissionType::RequestAuth => write!(f, "RequestAuth"),
