@@ -39,10 +39,12 @@ pub async fn handle_get_channel(
                 // println!("no messages")
             }
         }
-        let messages = x.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_message(conn));
+        let messages = x.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_concrete_unwrap(conn));
         let messages = futures::future::join_all(messages).await;
+        // let messages = x.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_message(conn));
+        // let messages = futures::future::join_all(messages).await;
 
-        let _ = TransmissionType::NewMessages(messages)
+        let _ = TransmissionType::ChannelEvent(messages)
             .wrap_into_transmission()
             .send(stream)
             .await;

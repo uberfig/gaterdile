@@ -136,7 +136,7 @@ function push_notification(username, channel, content) {
 			console.log("This browser does not support desktop notification");
 		} else if (Notification.permission === "granted") {
 			// const notification = new Notification(username+" "+channel, { body: content, icon: img });
-			const notification = new Notification(username+" "+channel, { body: content });
+			const notification = new Notification(username + " " + channel, { body: content });
 		}
 	}
 }
@@ -173,6 +173,42 @@ function handle_NewMessage(message) {
 		}
 
 	}
+}
+
+function handle_event_NewMessage(message) {
+	console.log("handling", message);
+
+	const chat = document.getElementById("chat");
+
+	if (oldest_message == null) {
+		oldest_message = message.id; //message.text
+	}
+
+	// for (let i = 0; i < message.NewMessages.length; i++) {
+
+	if (message.sender != uid) {
+		let name = uname_map[message.sender];
+		push_notification(name, "#general", message.text);
+	}
+
+
+
+	let para = create_message_element(message.NewMessage);
+	if (chat.lastChild != null && chat.lastChild.dataset != null) {
+
+		if (chat.lastChild.dataset.sender == message.sender && message.timestamp - chat.lastChild.dataset.timestamp < 4000) {
+			let above = para.querySelector(".username");
+			above.parentElement.style.display = "none";
+			chat.lastChild.style.paddingBottom = "0px"
+		}
+
+	}
+	chat.appendChild(para);
+	if (checkVisible(chat.lastChild)) {
+		para.scrollIntoView();
+	}
+
+	// }
 }
 
 function handle_PriorMessages(message) {
@@ -250,6 +286,19 @@ async function handle_serverinfo(event) {
 	console.log(uname_map);
 }
 
+function handle_channelevent(event) {
+
+	for (i in event.ChannelEvent) {
+		console.log(event.ChannelEvent[i]);
+		switch (event.ChannelEvent[i].event_type) {
+			case "NewMessage":
+				handle_event_NewMessage(event.ChannelEvent[i].data);
+				break;
+		}
+	}
+
+}
+
 async function handle_event(serverConn, event) {
 	// if event
 	console.log("handleing event: ", event.transmission_type);
@@ -263,6 +312,9 @@ async function handle_event(serverConn, event) {
 			break;
 		case "NewMessages":
 			handle_NewMessage(event.data);
+			break;
+		case "ChannelEvent":
+			handle_channelevent(event.data);
 			break;
 		case "Reaction":
 

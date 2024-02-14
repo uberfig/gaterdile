@@ -108,7 +108,7 @@ impl ChannelEvent {
     pub async fn get_message(self, conn: &DbConn) -> Message {
         conn.get_msg_by_id(self.message.expect("tried to get message when msg id is none")).await.unwrap()
     }
-    pub async fn get_concrete(&self, conn: &DbConn) -> Result<transmission::ChannelEvent, Error> {
+    pub async fn get_concrete(self, conn: &DbConn) -> Result<transmission::ChannelEvent, Error> {
         let evt_type = self.to_event_type();
         match evt_type {
             ChannelEventType::NewMessage(x) => {
@@ -128,6 +128,9 @@ impl ChannelEvent {
             ChannelEventType::UserLeave(_) => todo!(),
             ChannelEventType::Error => todo!(),
         }
+    }
+    pub async fn get_concrete_unwrap(self, conn: &DbConn) -> transmission::ChannelEvent {
+        self.get_concrete(conn).await.unwrap()
     }
 }
 
