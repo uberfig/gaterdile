@@ -9,7 +9,7 @@ use std::time::Duration;
 use gaterdile::db_types::ChannelEvent;
 use gaterdile::handlers::{handle_get_channel, handle_get_prior, handle_get_server, handle_join_server, ConnectionProps};
 use gaterdile::transmission::{
-    AuthErr, InsertError, Transmission, TransmissionMessage, TransmissionType, UserAuth
+    AuthErr, InsertError, Transmission, NewTransmissionMessage, TransmissionType, UserAuth
 };
 
 use rocket::futures;
@@ -59,7 +59,7 @@ async fn auth_user(conn: &DbConn, user: UserAuth) -> AuthErr {
 }
 
 async fn handle_send_message(
-    t_msg: TransmissionMessage,
+    t_msg: NewTransmissionMessage,
     props: &mut ConnectionProps,
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,

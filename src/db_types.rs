@@ -1,5 +1,5 @@
 use crate::{
-    db::DbConn, schema::db_schema, transmission::{self, TransmissionChannel}
+    db::DbConn, schema::db_schema, transmission::{self, TransmissionChannel, TransmissionMessage}
 };
 use diesel::result::Error;
 use serde::{Deserialize, Serialize};
@@ -27,6 +27,48 @@ pub struct Message {
     pub text: String,
     // pub emoji: Option<Vec<u8>>,
     pub timestamp: i64,
+}
+
+impl Message {
+    pub async fn to_transmission(self, conn: &DbConn) -> TransmissionMessage {
+        match self.reply {
+            Some(x) => {
+                let mut reply_uid = -1;
+                let prev = match conn.get_msg_by_id(x).await {
+                    Ok(x) => {
+                        reply_uid = x.sender;
+                        x.text
+                    },
+                    Err(_) => "Message Deleted".to_string(),
+                };
+                TransmissionMessage {
+                    id: self.id,
+                    sender: self.sender,
+                    server: self.server,
+                    channel: self.channel,
+                    reply: self.reply,
+                    reply_prev: Some(prev),
+                    reply_uid: Some(reply_uid),
+                    text: self.text,
+                    timestamp: self.timestamp,
+                }
+            },
+            None => {
+                TransmissionMessage {
+                    id: self.id,
+                    sender: self.sender,
+                    server: self.server,
+                    channel: self.channel,
+                    reply: self.reply,
+                    reply_prev: None,
+                    reply_uid: None,
+                    text: self.text,
+                    timestamp: self.timestamp,
+                }
+            },
+        }
+        // 
+    }
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
@@ -115,7 +157,7 @@ impl ChannelEvent {
                 let msg = conn.get_msg_by_id(x).await;
                 match msg {
                     Ok(y) => {
-                        let evt = transmission::ChannelEventType::NewMessage(y);
+                        let evt = transmission::ChannelEventType::NewMessage(y.to_transmission(conn).await);
                         Ok(transmission::ChannelEvent { event_type: evt.to_string(), data: evt })
                     },
                     Err(y) => Err(y),

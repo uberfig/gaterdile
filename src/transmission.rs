@@ -78,7 +78,7 @@ pub enum MessageContentType {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TransmissionMessage {
+pub struct NewTransmissionMessage {
     pub server: i32,
     pub channel: i32,
     pub reply: Option<i32>,
@@ -86,7 +86,20 @@ pub struct TransmissionMessage {
     // pub contents: Vec<MessageContent>,
 }
 
-impl TransmissionMessage {
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TransmissionMessage {
+    pub id: Option<i32>,
+    pub sender: i32,
+    pub server: i32,
+    pub channel: i32,
+    pub reply: Option<i32>,
+    pub reply_prev: Option<String>,
+    pub reply_uid: Option<i32>,
+    pub text: String,
+    pub timestamp: i64,
+}
+
+impl NewTransmissionMessage {
     pub fn to_message(&self, uid: i32) -> Message {
         use std::time::SystemTime;
         Message {
@@ -119,7 +132,7 @@ pub struct ChannelEvent {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 
 pub enum ChannelEventType {
-    NewMessage(Message),
+    NewMessage(TransmissionMessage),
     MessageDeleted(i32),
     NewReaction(React),
     DeleteReaction(i32),
@@ -157,7 +170,7 @@ pub struct UserEvent {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum TransmissionType {
-    SendMessage(TransmissionMessage),
+    SendMessage(NewTransmissionMessage),
     Reaction(React),
     Auth(UserAuth),
     GetServer(i32),       //requests to get server info
