@@ -119,6 +119,10 @@ html {
     background-color: var(--text_bg_selected_color);
 }
 
+.message_highlight {
+    background-color: var(--text_bg_selected_color);
+}
+
 .message_selected:hover {
     background-color: var(--text_bg_selected_color);
 }

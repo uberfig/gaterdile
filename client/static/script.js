@@ -38,12 +38,17 @@ function connected() {
 
 }
 
+function input_grab_focus() {
+	document.getElementById("message_input").focus();
+}
+
 function set_replying(id) {
 	if (id == reply_id) {
 		end_replying();
 		return;
 	}
-	end_replying()
+	input_grab_focus();
+	end_replying();
 	document.getElementById("input_replying").style.display = "flex";
 	const message = document.getElementById(id)
 	message.classList.add("message_selected");
@@ -65,6 +70,23 @@ function end_replying() {
 function reply_butt_func(id) {
 	console.log(id);
 	set_replying(id);
+}
+
+function clear_highlight(element) {
+	element.classList.remove("message_highlight");
+}
+
+async function scroll_and_highlight(id) {
+	const element = document.getElementById(id);
+	element.scrollIntoView();
+	element.classList.add("message_highlight");
+
+	console.log("eeping");
+	// await sleep(500);
+	await new Promise(r => setTimeout(r, 500));
+	console.log("wake");
+
+	clear_highlight(element);
 }
 
 function create_message_element(message) {
@@ -97,6 +119,14 @@ function create_message_element(message) {
 	const more_icon = feather.icons["more-horizontal"].toSvg({ 'stroke-width': 2, 'color': '#ffffff' });
 	more_butt.insertAdjacentHTML("afterbegin", more_icon);
 	menu_items.appendChild(more_butt);
+
+	if (message.reply != null) {
+		const reply = document.createElement("button");
+		reply.addEventListener('click', () => scroll_and_highlight(message.reply));
+		const reply_preview_icon = feather.icons["corner-up-right"].toSvg({ 'stroke-width': 2, 'color': '#ffffff' });
+		reply.insertAdjacentHTML("afterbegin", reply_preview_icon);
+		parent.appendChild(reply);
+	}
 
 	const top = document.createElement("div");
 	top.classList.add("message_top");
