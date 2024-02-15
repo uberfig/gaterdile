@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat</title>
     <link rel="stylesheet" href="styles.css">
-    
+
     <script src="script.js"></script>
     <script src="modules/transmission_types.js"></script>
     <script src="modules/transmission_methods.js"></script>
@@ -17,43 +17,54 @@
 
 <body>
     <div class="top">
-        <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; position:relative; padding: auto;">
+        <div
+            style="height: 100%; display: flex; flex-direction: column; justify-content: center; position:relative; padding: auto;">
             <h1>#general</h1>
         </div>
-        
+
     </div>
     <div class="chat" onscroll="check_scroll()">
         <div class="loader" id="loader"></div>
         <div id="chat"></div>
     </div>
-    
+
 
     </div>
-    <!-- <div class="input">
-        <button onclick="send_clicked()">Send</button>
-        <div class="text_input_container">
-            <textarea name="text_input" id="message_input" rows="2" placeholder="message #0,0" onkeypress=""></textarea>
-        </div>
-    </div> -->
+
+
     <div class="input">
+        <div class="input_replying_container" id="input_replying">
+
+            <p>replying to: </p>
+            <p id="reply_username"></p>
+
+            <div style="margin-left: auto;">
+                <button class="close" onclick="end_replying()"><i data-feather="x-circle"></i></button>
+            </div>
+            <!-- <div class="reply_container">
+                
+            </div> -->
+        </div>
+
         <div class="input_container">
-            
+
             <div class="text_input_container">
-                <div contenteditable="true" name="text_input" id="message_input" placeholder="message #0,0" class="text_input"></div>
+                <div contenteditable="true" name="text_input" id="message_input" placeholder="message #0,0"
+                    class="text_input"></div>
             </div>
             <button onclick="send_clicked()"><i data-feather="smile"></i></button>
             <button class="send" onclick="send_clicked()"><i data-feather="send"></i></button>
-            
+
         </div>
     </div>
 </body>
 
 <div class='auth_prompt' id="auth_prompt">
     <div class="login" id="login">
-        <p class="auth_failure", id="auth_failure"></p>
+        <p class="auth_failure" , id="auth_failure"></p>
         <div>
             <h1>Login</h1>
-            <form  autocomplete="on" id="login_form">
+            <form autocomplete="on" id="login_form">
                 <label for="username">Username</label><br><input type="text" name="username" />
                 <br>
                 <label for="password">Password</label><br><input type="password" name="password" />

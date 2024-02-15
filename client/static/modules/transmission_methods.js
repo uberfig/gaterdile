@@ -9,6 +9,7 @@ async function join_server(serverConn, server) {
 }
 
 async function get_old_messages(serverConn) {
+	console.log(oldest_message)
 	var out = new Transmission("GetPriorMessages", new GetPriorMessages(oldest_message));
 	serverConn.send(JSON.stringify(out));
 }
@@ -18,8 +19,8 @@ async function get_server(serverConn, server_id) {
 	serverConn.send(JSON.stringify(out));
 }
 
-async function send_message(text, server, channel) {
-	var message = new TransmitMessage(text, server, channel);
+async function send_message(text, server, channel, reply = null) {
+	var message = new TransmitMessage(text, server, channel, reply);
 	var outgoing = new Transmission("Message", message);
 	serverConn.send(JSON.stringify(outgoing));
 	console.log("sent, ", outgoing);

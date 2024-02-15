@@ -5,6 +5,8 @@ let subscribed_channel = -1;
 let uname_map = {};
 let oldest_message = null;
 let loading = false;
+let replying = false;
+let reply_id = null;
 
 async function send_clicked() {
 	var input = document.getElementById("message_input").textContent.trim();
@@ -15,8 +17,9 @@ async function send_clicked() {
 
 	document.getElementById("message_input").textContent = "";
 	if (input != "") {
-		send_message(input, 0, 0);
+		send_message(input, 0, 0, reply_id);
 	}
+	end_replying();
 }
 
 async function get_connection() {
@@ -35,6 +38,35 @@ function connected() {
 
 }
 
+function set_replying(id) {
+	if (id == reply_id) {
+		end_replying();
+		return;
+	}
+	end_replying()
+	document.getElementById("input_replying").style.display = "flex";
+	const message = document.getElementById(id)
+	message.classList.add("message_selected");
+	document.getElementById("reply_username").innerText = uname_map[message.dataset.sender]
+	
+	replying = true;
+	reply_id = id;
+}
+
+function end_replying() {
+	document.getElementById("input_replying").style.display = "none";
+	if (reply_id != null) {
+		document.getElementById(reply_id).classList.remove("message_selected");
+	}
+	replying = false;
+	reply_id = null;
+}
+
+function reply_butt_func(id) {
+	console.log(id);
+	set_replying(id);
+}
+
 function create_message_element(message) {
 	const parent = document.createElement("div");
 	parent.classList.add("message");
@@ -50,18 +82,19 @@ function create_message_element(message) {
 	//corner-up-left
 
 	const reply_butt = document.createElement("button");
-	const reply_icon = feather.icons["corner-up-left"].toSvg();
+	const reply_icon = feather.icons["corner-up-left"].toSvg({ 'stroke-width': 2, 'color': '#ffffff' });
 	reply_butt.insertAdjacentHTML("afterbegin", reply_icon);
 	menu_items.appendChild(reply_butt);
+	reply_butt.addEventListener('click', () => reply_butt_func(message.id));
 
 	const reaction_butt = document.createElement("button");
 	reaction_butt.classList.add("reaction_button");
-	const emoji_icon = feather.icons.smile.toSvg();
+	const emoji_icon = feather.icons.smile.toSvg({ 'stroke-width': 2, 'color': '#ffffff' });
 	reaction_butt.insertAdjacentHTML("afterbegin", emoji_icon);
 	menu_items.appendChild(reaction_butt);
 
 	const more_butt = document.createElement("button");
-	const more_icon = feather.icons["more-horizontal"].toSvg();
+	const more_icon = feather.icons["more-horizontal"].toSvg({ 'stroke-width': 2, 'color': '#ffffff' });
 	more_butt.insertAdjacentHTML("afterbegin", more_icon);
 	menu_items.appendChild(more_butt);
 
@@ -181,7 +214,7 @@ function handle_event_NewMessage(message) {
 	const chat = document.getElementById("chat");
 
 	if (oldest_message == null) {
-		oldest_message = message.id; //message.text
+		oldest_message = message.NewMessage.id; //message.text
 	}
 
 	if (message.sender != uid) {
