@@ -130,6 +130,12 @@ function create_message_element(message) {
 		const reply_preview_icon = feather.icons["corner-up-right"].toSvg({ 'stroke-width': 2, 'color': '#ffffff' });
 		reply.insertAdjacentHTML("afterbegin", reply_preview_icon);
 
+		const preview_uname = document.createElement("p");
+		const preview_uname_text = document.createTextNode(uname_map[message.reply_uid]);
+		preview_uname.appendChild(preview_uname_text);
+		preview_uname.classList.add("username");
+		reply.appendChild(preview_uname);
+
 		const preview = document.createElement("p");
 		const preview_text = document.createTextNode(message.reply_prev);
 		preview.appendChild(preview_text);
