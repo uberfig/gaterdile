@@ -4,16 +4,15 @@ gaterdile is an open source instant messaging platform in active development
 
 this is roughly my todo list for now, it will most likely happen in this order but it is likely to change
 
-- [ ]  server channel event overhaul
-- [ ]  client channel event overhaul
+- [x]  server channel event overhaul
+- [x]  client channel event overhaul
+- [ ]  finish implimenting replies
+- [ ]  client support for creating and switching servers and channels
 - [ ]  file uploads
 - [ ]  message attachments
 - [ ]  server custom emoji support
 - [ ]  client custom emoji rendering
 - [ ]  create emoji picker
-- [ ]  client support for switching servers
-- [ ]  client support for creating servers
-- [ ]  client support for switching channels
 - [ ]  add server unit testing
 - [ ]  0.1 release with stablized sql migration
 
