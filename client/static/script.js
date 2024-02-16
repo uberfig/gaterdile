@@ -72,21 +72,24 @@ function reply_butt_func(id) {
 	set_replying(id);
 }
 
-function clear_highlight(element) {
+async function clear_highlight(element) {
 	element.classList.remove("message_highlight");
+	await new Promise(r => setTimeout(r, 400));
+	element.classList.remove("fade_bg");
 }
 
 async function scroll_and_highlight(id) {
 	const element = document.getElementById(id);
 	element.scrollIntoView();
+	element.classList.add("fade_bg");
 	element.classList.add("message_highlight");
 
 	console.log("eeping");
 	// await sleep(500);
-	await new Promise(r => setTimeout(r, 500));
+	await new Promise(r => setTimeout(r, 600));
 	console.log("wake");
-
-	clear_highlight(element);
+	
+	await clear_highlight(element);
 }
 
 function create_message_element(message) {
@@ -122,9 +125,16 @@ function create_message_element(message) {
 
 	if (message.reply != null) {
 		const reply = document.createElement("button");
+		reply.classList.add("message_reply");
 		reply.addEventListener('click', () => scroll_and_highlight(message.reply));
 		const reply_preview_icon = feather.icons["corner-up-right"].toSvg({ 'stroke-width': 2, 'color': '#ffffff' });
 		reply.insertAdjacentHTML("afterbegin", reply_preview_icon);
+
+		const preview = document.createElement("p");
+		const preview_text = document.createTextNode(message.reply_prev);
+		preview.appendChild(preview_text);
+		reply.appendChild(preview);
+		
 		parent.appendChild(reply);
 	}
 
