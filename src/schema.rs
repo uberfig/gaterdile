@@ -1,7 +1,7 @@
 pub mod db_schema {
     table! {
         users {
-            id -> Nullable<Integer>,
+            id -> Nullable<BigSerial>,
             username -> Text,
             nickname -> Nullable<Text>,
             password -> Text,
@@ -9,91 +9,91 @@ pub mod db_schema {
     }
     table! {
         servers {
-            id -> Nullable<Integer>,
+            id -> Nullable<BigSerial>,
             nickname -> Text,
-            owner -> Integer,
+            owner -> BigSerial,
         }
     }
     table! {
         emojis {
-            id      -> Nullable<Integer>,
-            server  -> Integer,
+            id      -> Nullable<BigSerial>,
+            server  -> BigSerial,
             name    -> Text,
-            attachmentid -> Integer,
+            attachmentid -> BigSerial,
         }
     }
     table! {
         channels (id, server) {
-            id 		-> Nullable<Integer>,
-            server 	-> Integer,
+            id 		-> Nullable<BigSerial>,
+            server 	-> BigSerial,
             name 	-> Text,
         }
     }
     table! {
         attachments {
-            id -> Integer,
+            id -> BigSerial,
             name -> Text,
-            owner -> Integer,
-            server -> Integer,
+            owner -> BigSerial,
+            server -> BigSerial,
             content -> Blob,
         }
     }
     table! {
         messages {
-            id 		-> Nullable<Integer>,
-            sender	-> Integer,
-            server	-> Integer,
-            channel -> Integer,
+            id 		-> Nullable<BigSerial>,
+            sender	-> BigSerial,
+            server	-> BigSerial,
+            channel -> BigSerial,
             // mention -> Blob,
-            reply	-> Nullable<Integer>,
+            reply	-> Nullable<BigSerial>,
             text	-> Text,
             timestamp	-> BigInt,
         }
     }
     table! {
         mentions {
-            id 		-> Integer, //message id
-            userid  -> Nullable<Integer>,
-            roleid  -> Nullable<Integer>
+            id 		-> BigSerial, //message id
+            userid  -> Nullable<BigSerial>,
+            roleid  -> Nullable<BigSerial>
         }
     }
     table! {
         reactions (id) {
-            id -> Integer,
-            userid 	-> Integer,
-            messageid -> Integer,
-            emoji	-> Integer,
+            id -> BigSerial,
+            userid 	-> BigSerial,
+            messageid -> BigSerial,
+            emoji	-> BigSerial,
         }
     }
     table! {
         server_members (server_id, userid) {
             // id  -> Nullable<Integer>,
-            server_id -> Integer,
-            userid  -> Integer,
+            server_id -> BigSerial,
+            userid  -> BigSerial,
             nickname -> Nullable<Text>,
         }
     }
     table! {
         channel_events {
-            id -> Nullable<Integer>,
-            channel_id -> Integer,
-            server_id -> Integer,
+            id -> Nullable<BigSerial>,
+            channel_id -> BigSerial,
+            server_id -> BigSerial,
             timestamp -> BigInt,
             event_type -> Integer,
-            message -> Nullable<Integer>,
-            reaction -> Nullable<Integer>,
-            user -> Nullable<Integer>,
-            deleted -> Nullable<Integer>,
+            message -> Nullable<BigSerial>,
+            reaction -> Nullable<BigSerial>,
+            creator -> Nullable<BigSerial>,
+            deleted -> Nullable<BigSerial>,
         }
     }
     table! {
         server_events {
-            id -> Nullable<Integer>,
-            server_id -> Integer,
+            id -> Nullable<BigSerial>,
+            server_id -> BigSerial,
             timestamp -> BigInt,
             event_type -> Integer,
-            user -> Nullable<Integer>,
-            deleted -> Nullable<Integer>,
+            creator -> Nullable<BigSerial>,
+            deleted -> Nullable<BigSerial>,
         }
     }
 }

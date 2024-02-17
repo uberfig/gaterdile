@@ -12,7 +12,7 @@ use rocket::serde::{Deserialize, Serialize};
 #[derive(Deserialize, Queryable, Insertable, Debug)]
 #[diesel(table_name = db_schema::users)]
 pub struct User {
-    pub id: Option<i32>,
+    pub id: Option<i64>,
     pub username: String,
     pub nickname: Option<String>,
     password: String,
@@ -72,7 +72,7 @@ impl User {
 }
 
 #[database("diesel")]
-pub struct DbConn(diesel::SqliteConnection);
+pub struct DbConn(diesel::PgConnection);
 use db_schema::{
     // messages::{self, channel},
     messages::{self},
@@ -89,7 +89,7 @@ pub struct InsertedRowId {
 }
 
 impl DbConn {
-    pub async fn get_user_by_id(&self, id: i32) -> Result<User, Error> {
+    pub async fn get_user_by_id(&self, id: i64) -> Result<User, Error> {
         let user: User = self
             .run(move |conn| users::table.filter(users::id.eq(id)).first(conn))
             .await?;
@@ -103,7 +103,7 @@ impl DbConn {
         Ok(user)
     }
 
-    pub async fn get_user_name(&self, id: i32) -> Result<String, Error> {
+    pub async fn get_user_name(&self, id: i64) -> Result<String, Error> {
         let user: User = self
             .run(move |conn| {
                 db_schema::users::table
@@ -128,7 +128,7 @@ impl DbConn {
         e.is_ok()
     }
 
-    pub async fn get_msg_by_id(&self, id: i32) -> Result<Message, Error> {
+    pub async fn get_msg_by_id(&self, id: i64) -> Result<Message, Error> {
         let message: Message = self
             .run(move |conn| messages::table.filter(messages::id.eq(id)).first(conn))
             .await?;
@@ -162,6 +162,7 @@ impl DbConn {
                         ChannelEventType::NewMessage(x.id.unwrap()),
                     )
                     .await;
+                dbg!(&y);
                 let _restut = y.expect("unable to insert message event for new message");
             }
             Err(_) => todo!(),
@@ -174,8 +175,8 @@ impl DbConn {
 
     async fn get_channel_messages(
         &self,
-        server_id: i32,
-        channel_id: i32,
+        server_id: i64,
+        channel_id: i64,
         amount: i64,
     ) -> Result<Vec<Message>, Error> {
         let mut val = self
@@ -204,10 +205,10 @@ impl DbConn {
 
     async fn get_messages_prior(
         &self,
-        server_id: i32,
-        channel_id: i32,
+        server_id: i64,
+        channel_id: i64,
         prior_to: i64,
-        last_msg: i32,
+        last_msg: i64,
         amount: i64,
     ) -> Result<Vec<Message>, Error> {
         let mut val = self
@@ -238,10 +239,10 @@ impl DbConn {
 
     async fn get_messages_since_timestamp_and_id(
         &self,
-        server_id: i32,
-        channel_id: i32,
+        server_id: i64,
+        channel_id: i64,
         since: i64,
-        id: i32,
+        id: i64,
         amount: i64,
     ) -> Result<Vec<Message>, diesel::result::Error> {
         let mut a = self
@@ -271,7 +272,7 @@ impl DbConn {
 
     pub async fn get_server_members(
         &self,
-        server_id: i32,
+        server_id: i64,
     ) -> Result<Vec<ServerMember>, diesel::result::Error> {
         let mut val = self
             .run(move |conn| {
@@ -302,7 +303,7 @@ impl DbConn {
     //gets all servers a user is a part of
     pub async fn get_user_servers(
         &self,
-        uid: i32,
+        uid: i64,
     ) -> Result<Vec<ServerMember>, diesel::result::Error> {
         self.run(move |conn| {
             server_members::dsl::server_members
@@ -314,7 +315,7 @@ impl DbConn {
 
     pub async fn get_server_channels(
         &self,
-        server_id: i32,
+        server_id: i64,
     ) -> Result<Vec<Channel>, diesel::result::Error> {
         self.run(move |conn| {
             channels::dsl::channels
@@ -326,8 +327,8 @@ impl DbConn {
 
     pub async fn join_server(
         &self,
-        server_id: i32,
-        userid: i32,
+        server_id: i64,
+        userid: i64,
         nickname: Option<String>,
     ) -> JoinServerResult {
         let message: ServerMember = ServerMember {
@@ -344,7 +345,7 @@ impl DbConn {
             .await;
 
         match e {
-            Ok(x) => JoinServerResult::Success(x as i32),
+            Ok(x) => JoinServerResult::Success(x.try_into().unwrap()),
             Err(x) => {
                 dbg!(x);
                 JoinServerResult::AlreadyInServer
@@ -354,8 +355,8 @@ impl DbConn {
 
     pub async fn create_channel_event(
         &self,
-        channel_id: i32,
-        server_id: i32,
+        channel_id: i64,
+        server_id: i64,
         timestamp: i64,
         event_type: ChannelEventType,
     ) -> Result<usize, diesel::result::Error> {
@@ -371,9 +372,9 @@ impl DbConn {
 
     pub async fn get_events_since_timestamp_and_id(
         &self,
-        channel_id: i32,
+        channel_id: i64,
         since: i64,
-        id: i32,
+        id: i64,
         amount: i64,
     ) -> Result<Vec<ChannelEvent>, diesel::result::Error> {
         let mut a = self
@@ -401,9 +402,9 @@ impl DbConn {
     pub async fn get_events_prior(
         &self,
         // server_id: i32,
-        channel_id: i32,
+        channel_id: i64,
         prior_to: i64,
-        last_msg: i32,
+        last_msg: i64,
         amount: i64,
     ) -> Result<Vec<ChannelEvent>, Error> {
         let mut val = self
@@ -435,7 +436,7 @@ impl DbConn {
     pub async fn get_channel_events(
         &self,
         // server_id: i32,
-        channel_id: i32,
+        channel_id: i64,
         amount: i64,
     ) -> Result<Vec<ChannelEvent>, Error> {
         let mut val = self

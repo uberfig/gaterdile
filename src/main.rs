@@ -140,7 +140,7 @@ async fn handle_transmission(
             match err {
                 InsertError::Success(x) => {
                     props.authenticated = true;
-                    props.uid = x as i32;
+                    props.uid = x.try_into().unwrap();
                 }
                 _ => {
                     props.authenticated = false;

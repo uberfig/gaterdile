@@ -5,6 +5,7 @@ use diesel::result::Error;
 use serde::{Deserialize, Serialize};
 
 #[derive(
+    Default,
     Deserialize,
     Queryable,
     Insertable,
@@ -17,13 +18,15 @@ use serde::{Deserialize, Serialize};
 )]
 #[diesel(primary_key(id))]
 #[diesel(table_name = db_schema::messages)]
-#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+// #[diesel(check_for_backend(diesel::post))]
 pub struct Message {
-    pub id: Option<i32>,
-    pub sender: i32,
-    pub server: i32,
-    pub channel: i32,
-    pub reply: Option<i32>,
+    // #[diesel(deserialize_as = "i64")]
+    #[diesel(deserialize_as = Option<i64>)]
+    pub id: Option<i64>,
+    pub sender: i64,
+    pub server: i64,
+    pub channel: i64,
+    pub reply: Option<i64>,
     pub text: String,
     // pub emoji: Option<Vec<u8>>,
     pub timestamp: i64,
@@ -75,16 +78,16 @@ impl Message {
 #[diesel(table_name = db_schema::server_members)]
 pub struct ServerMember {
     // pub id: Option<i32>,
-    pub server_id: i32,
-    pub userid: i32,
+    pub server_id: i64,
+    pub userid: i64,
     pub nickname: Option<String>,
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
 #[diesel(table_name = db_schema::channels)]
 pub struct Channel {
-    pub id: Option<i32>,
-    pub server: i32,
+    pub id: Option<i64>,
+    pub server: i64,
     pub name: String,
 }
 
@@ -111,24 +114,24 @@ impl Channel {
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
 #[diesel(table_name = db_schema::channel_events)]
 pub struct ChannelEvent {
-    pub id: Option<i32>,
-    pub channel_id: i32,
-    pub server_id: i32,
+    pub id: Option<i64>,
+    pub channel_id: i64,
+    pub server_id: i64,
     pub timestamp: i64,
     pub event_type: i32,
-    pub message: Option<i32>,
-    pub reaction: Option<i32>,
-    pub user: Option<i32>,
-    pub deleted: Option<i32>, //used for the id of deleted content
+    pub message: Option<i64>,
+    pub reaction: Option<i64>,
+    pub creator: Option<i64>,
+    pub deleted: Option<i64>, //used for the id of deleted content
 }
 
 pub enum ChannelEventType {
-    NewMessage(i32),
-    MessageDeleted(i32),
-    NewReaction(i32),
-    DeleteReaction(i32),
-    UserJoin(i32),
-    UserLeave(i32),
+    NewMessage(i64),
+    MessageDeleted(i64),
+    NewReaction(i64),
+    DeleteReaction(i64),
+    UserJoin(i64),
+    UserLeave(i64),
     Error,
 }
 
@@ -139,8 +142,8 @@ impl ChannelEvent {
             1 => ChannelEventType::MessageDeleted(self.deleted.unwrap()),
             2 => ChannelEventType::NewReaction(self.reaction.unwrap()),
             3 => ChannelEventType::DeleteReaction(self.deleted.unwrap()),
-            4 => ChannelEventType::UserJoin(self.user.unwrap()),
-            5 => ChannelEventType::UserLeave(self.user.unwrap()),
+            4 => ChannelEventType::UserJoin(self.creator.unwrap()),
+            5 => ChannelEventType::UserLeave(self.creator.unwrap()),
             _ => ChannelEventType::Error,
         }
     }
@@ -188,7 +191,7 @@ impl ChannelEventType {
             ChannelEventType::Error => -1,
         }
     }
-    pub fn to_event(&self, channel_id: i32, server_id:i32, timestamp: i64) -> ChannelEvent {
+    pub fn to_event(&self, channel_id: i64, server_id:i64, timestamp: i64) -> ChannelEvent {
         match self {
             ChannelEventType::NewMessage(x) => ChannelEvent {
                 id: None,
@@ -198,7 +201,7 @@ impl ChannelEventType {
                 event_type: self.to_int(),
                 message: Some(*x),
                 reaction: None,
-                user: None,
+                creator: None,
                 deleted: None,
             },
             ChannelEventType::MessageDeleted(x) => ChannelEvent {
@@ -209,7 +212,7 @@ impl ChannelEventType {
                 event_type: self.to_int(),
                 message: None,
                 reaction: None,
-                user: None,
+                creator: None,
                 deleted: Some(*x),
             },
             ChannelEventType::NewReaction(x) => ChannelEvent {
@@ -220,7 +223,7 @@ impl ChannelEventType {
                 event_type: self.to_int(),
                 message: None,
                 reaction: Some(*x),
-                user: None,
+                creator: None,
                 deleted: None,
             },
             ChannelEventType::DeleteReaction(x) => ChannelEvent {
@@ -231,7 +234,7 @@ impl ChannelEventType {
                 event_type: self.to_int(),
                 message: None,
                 reaction: None,
-                user: None,
+                creator: None,
                 deleted: Some(*x),
             },
             ChannelEventType::UserJoin(x) => ChannelEvent {
@@ -242,7 +245,7 @@ impl ChannelEventType {
                 event_type: self.to_int(),
                 message: None,
                 reaction: None,
-                user: Some(*x),
+                creator: Some(*x),
                 deleted: None,
             },
             ChannelEventType::UserLeave(x) => ChannelEvent {
@@ -253,7 +256,7 @@ impl ChannelEventType {
                 event_type: self.to_int(),
                 message: None,
                 reaction: None,
-                user: Some(*x),
+                creator: Some(*x),
                 deleted: None,
             },
             ChannelEventType::Error => ChannelEvent {
@@ -264,7 +267,7 @@ impl ChannelEventType {
                 event_type: self.to_int(),
                 message: None,
                 reaction: None,
-                user: None,
+                creator: None,
                 deleted: None,
             },
         }

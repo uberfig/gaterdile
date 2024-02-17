@@ -6,17 +6,17 @@ use rocket::tokio::join;
 
 #[derive(Debug)]
 pub struct ConnectionProps {
-    pub uid: i32,
+    pub uid: i64,
     pub authenticated: bool,
-    pub listening_server: Option<i32>,
-    pub listening_channel: Option<i32>,
+    pub listening_server: Option<i64>,
+    pub listening_channel: Option<i64>,
     pub last_sent_timestamp: Option<i64>,
-    pub last_sent_id: Option<i32>,
+    pub last_sent_id: Option<i64>,
 }
 
 pub async fn handle_get_channel(
-    server_id: i32,
-    channel_id: i32,
+    server_id: i64,
+    channel_id: i64,
     props: &mut ConnectionProps,
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
@@ -52,11 +52,11 @@ pub async fn handle_get_channel(
 }
 
 pub async fn handle_get_prior(
-    server_id: i32,
-    channel_id: i32,
+    server_id: i64,
+    channel_id: i64,
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
-    last_msg: i32,
+    last_msg: i64,
 ) {
     let msg = conn.get_msg_by_id(last_msg).await;
 
@@ -92,7 +92,7 @@ pub async fn handle_get_prior(
     }
 }
 
-pub async fn handle_get_server(server_id: i32, conn: &DbConn, stream: &mut ws::stream::DuplexStream) {
+pub async fn handle_get_server(server_id: i64, conn: &DbConn, stream: &mut ws::stream::DuplexStream) {
     let members_fut = conn.get_server_members(server_id);
     let channels_fut = conn.get_server_channels(server_id);
     let (members, channels) = join!(members_fut, channels_fut);
@@ -112,8 +112,8 @@ pub async fn handle_get_server(server_id: i32, conn: &DbConn, stream: &mut ws::s
 }
 
 pub async fn handle_join_server(
-    server_id: i32,
-    userid: i32,
+    server_id: i64,
+    userid: i64,
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {

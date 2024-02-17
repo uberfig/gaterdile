@@ -7,8 +7,8 @@ use rocket_ws as ws;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TransmissionChannel {
-    pub id: Option<i32>,
-    pub server: i32,
+    pub id: Option<i64>,
+    pub server: i64,
     pub name: String,
 }
 
@@ -23,14 +23,14 @@ pub enum InsertError {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum AuthErr {
-    Success(i32),
+    Success(i64),
     InvalidUsername,
     InvalidPassword,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum JoinServerResult {
-    Success(i32),
+    Success(i64),
     AlreadyInServer,
     NotAuthorised,
     Failure,
@@ -79,28 +79,28 @@ pub enum MessageContentType {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct NewTransmissionMessage {
-    pub server: i32,
-    pub channel: i32,
-    pub reply: Option<i32>,
+    pub server: i64,
+    pub channel: i64,
+    pub reply: Option<i64>,
     pub text: String,
     // pub contents: Vec<MessageContent>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TransmissionMessage {
-    pub id: Option<i32>,
-    pub sender: i32,
-    pub server: i32,
-    pub channel: i32,
-    pub reply: Option<i32>,
+    pub id: Option<i64>,
+    pub sender: i64,
+    pub server: i64,
+    pub channel: i64,
+    pub reply: Option<i64>,
     pub reply_prev: Option<String>,
-    pub reply_uid: Option<i32>,
+    pub reply_uid: Option<i64>,
     pub text: String,
     pub timestamp: i64,
 }
 
 impl NewTransmissionMessage {
-    pub fn to_message(&self, uid: i32) -> Message {
+    pub fn to_message(&self, uid: i64) -> Message {
         use std::time::SystemTime;
         Message {
             id: None,
@@ -173,14 +173,14 @@ pub enum TransmissionType {
     SendMessage(NewTransmissionMessage),
     Reaction(React),
     Auth(UserAuth),
-    GetServer(i32),       //requests to get server info
-    GetChannel(i32, i32), //server, channel gets the channels recent messages
+    GetServer(i64),       //requests to get server info
+    GetChannel(i64, i64), //server, channel gets the channels recent messages
     CreateUser(UserAuth),
     GetUserServers,
-    JoinServer(i32),
-    GetPriorMessages(i32),
-    GetEmoji(i32),
-    GetAttachment(i32),
+    JoinServer(i64),
+    GetPriorMessages(i64),
+    GetEmoji(i64),
+    GetAttachment(i64),
     //from server only:
     InvalidTransmission,
     RequestAuth,

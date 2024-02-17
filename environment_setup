@@ -1,0 +1,8 @@
+sudo apt install postgresql
+sudo apt install libpq-dev
+
+sudo -u postgres createuser -s -i -d -r -l -w ivy
+
+sudo -u postgres psql -c "ALTER ROLE ivy WITH PASSWORD 'password';"
+
+createdb gaterdile_dev
