@@ -158,13 +158,7 @@ async fn handle_transmission(
             handle_join_server(server_id, props.uid, conn, stream).await;
         }
         TransmissionType::GetPriorMessages(since) => {
-            handle_get_prior(
-                props.listening_channel.unwrap_or(-1),
-                conn,
-                stream,
-                since,
-            )
-            .await
+            handle_get_prior(props.listening_channel.unwrap_or(-1), conn, stream, since).await
         }
         TransmissionType::GetEmoji(_) => todo!(),
         TransmissionType::GetAttachment(_) => todo!(),
