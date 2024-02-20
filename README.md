@@ -6,7 +6,7 @@ this is roughly my todo list for now, it will most likely happen in this order b
 
 - [x]  server channel event overhaul
 - [x]  client channel event overhaul
-- [ ]  finish implimenting replies
+- [x]  finish implimenting replies
 - [ ]  client support for creating and switching servers and channels
 - [ ]  file uploads
 - [ ]  message attachments
