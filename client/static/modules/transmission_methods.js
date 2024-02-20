@@ -9,7 +9,7 @@ async function join_server(serverConn, server) {
 }
 
 async function get_old_messages(serverConn) {
-	console.log(oldest_message)
+	console.log("oldest_message"+oldest_message)
 	var out = new Transmission("GetPriorMessages", new GetPriorMessages(oldest_message));
 	serverConn.send(JSON.stringify(out));
 }

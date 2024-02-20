@@ -1,5 +1,7 @@
 use crate::{
-    db::DbConn, schema::db_schema, transmission::{self, TransmissionChannel, TransmissionMessage}
+    db::DbConn,
+    schema::db_schema,
+    transmission::{self, NewTransmissionMessage, TransmissionChannel, TransmissionMessage},
 };
 use diesel::result::Error;
 use serde::{Deserialize, Serialize};
@@ -27,10 +29,13 @@ pub struct Message {
     pub server: i64,
     pub channel: i64,
     pub reply: Option<i64>,
+    pub is_reply: bool,
     pub text: String,
     // pub emoji: Option<Vec<u8>>,
     pub timestamp: i64,
 }
+
+impl Message {}
 
 impl Message {
     pub async fn to_transmission(self, conn: &DbConn) -> TransmissionMessage {
@@ -41,7 +46,7 @@ impl Message {
                     Ok(x) => {
                         reply_uid = x.sender;
                         x.text
-                    },
+                    }
                     Err(_) => "Message Deleted".to_string(),
                 };
                 TransmissionMessage {
@@ -50,27 +55,43 @@ impl Message {
                     server: self.server,
                     channel: self.channel,
                     reply: self.reply,
+                    is_reply: self.is_reply,
                     reply_prev: Some(prev),
                     reply_uid: Some(reply_uid),
                     text: self.text,
                     timestamp: self.timestamp,
                 }
-            },
-            None => {
-                TransmissionMessage {
-                    id: self.id,
-                    sender: self.sender,
-                    server: self.server,
-                    channel: self.channel,
-                    reply: self.reply,
-                    reply_prev: None,
-                    reply_uid: None,
-                    text: self.text,
-                    timestamp: self.timestamp,
-                }
+            }
+            None => TransmissionMessage {
+                id: self.id,
+                sender: self.sender,
+                server: self.server,
+                channel: self.channel,
+                reply: self.reply,
+                is_reply: self.is_reply,
+                reply_prev: None,
+                reply_uid: None,
+                text: self.text,
+                timestamp: self.timestamp,
             },
         }
-        // 
+        //
+    }
+    pub fn from_newmsg(value: NewTransmissionMessage, uid: i64) -> Self {
+        use std::time::SystemTime;
+        Message {
+            id: None,
+            sender: uid,
+            server: value.server,
+            channel: value.channel,
+            reply: value.reply,
+            is_reply: value.reply.is_some(),
+            text: value.text,
+            timestamp: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as i64,
+        }
     }
 }
 
@@ -151,7 +172,12 @@ impl ChannelEvent {
         self.event_type == 0
     }
     pub async fn get_message(self, conn: &DbConn) -> Message {
-        conn.get_msg_by_id(self.message.expect("tried to get message when msg id is none")).await.unwrap()
+        conn.get_msg_by_id(
+            self.message
+                .expect("tried to get message when msg id is none"),
+        )
+        .await
+        .unwrap()
     }
     pub async fn get_concrete(self, conn: &DbConn) -> Result<transmission::ChannelEvent, Error> {
         let evt_type = self.to_event_type();
@@ -160,12 +186,17 @@ impl ChannelEvent {
                 let msg = conn.get_msg_by_id(x).await;
                 match msg {
                     Ok(y) => {
-                        let evt = transmission::ChannelEventType::NewMessage(y.to_transmission(conn).await);
-                        Ok(transmission::ChannelEvent { event_type: evt.to_string(), data: evt })
-                    },
+                        let evt = transmission::ChannelEventType::NewMessage(
+                            y.to_transmission(conn).await,
+                        );
+                        Ok(transmission::ChannelEvent {
+                            event_type: evt.to_string(),
+                            data: evt,
+                        })
+                    }
                     Err(y) => Err(y),
-                }                
-            },
+                }
+            }
             ChannelEventType::MessageDeleted(_) => todo!(),
             ChannelEventType::NewReaction(_) => todo!(),
             ChannelEventType::DeleteReaction(_) => todo!(),
@@ -191,7 +222,7 @@ impl ChannelEventType {
             ChannelEventType::Error => -1,
         }
     }
-    pub fn to_event(&self, channel_id: i64, server_id:i64, timestamp: i64) -> ChannelEvent {
+    pub fn to_event(&self, channel_id: i64, server_id: i64, timestamp: i64) -> ChannelEvent {
         match self {
             ChannelEventType::NewMessage(x) => ChannelEvent {
                 id: None,

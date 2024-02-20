@@ -1,8 +1,11 @@
-use crate::{db::DbConn, db_types::{Channel, ChannelEvent}, transmission::{ServerInfoData, TransmissionType}};
+use crate::{
+    db::DbConn,
+    db_types::{Channel, ChannelEvent},
+    transmission::{ServerInfoData, TransmissionType},
+};
 use rocket::futures;
-use rocket_ws as ws;
 use rocket::tokio::join;
-
+use rocket_ws as ws;
 
 #[derive(Debug)]
 pub struct ConnectionProps {
@@ -39,7 +42,10 @@ pub async fn handle_get_channel(
                 // println!("no messages")
             }
         }
-        let messages = x.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_concrete_unwrap(conn));
+        let messages = x
+            .into_iter()
+            .filter(ChannelEvent::is_message)
+            .map(|y| y.get_concrete_unwrap(conn));
         let messages = futures::future::join_all(messages).await;
         // let messages = x.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_message(conn));
         // let messages = futures::future::join_all(messages).await;
@@ -82,7 +88,10 @@ pub async fn handle_get_prior(
                 .send(stream)
                 .await;
         } else {
-            let messages = x.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_message(conn));
+            let messages = x
+                .into_iter()
+                .filter(ChannelEvent::is_message)
+                .map(|y| y.get_concrete_unwrap(conn));
             let messages = futures::future::join_all(messages).await;
             let _ = TransmissionType::PriorMessages(messages)
                 .wrap_into_transmission()
@@ -92,7 +101,11 @@ pub async fn handle_get_prior(
     }
 }
 
-pub async fn handle_get_server(server_id: i64, conn: &DbConn, stream: &mut ws::stream::DuplexStream) {
+pub async fn handle_get_server(
+    server_id: i64,
+    conn: &DbConn,
+    stream: &mut ws::stream::DuplexStream,
+) {
     let members_fut = conn.get_server_members(server_id);
     let channels_fut = conn.get_server_channels(server_id);
     let (members, channels) = join!(members_fut, channels_fut);

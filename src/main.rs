@@ -6,21 +6,22 @@ extern crate rocket;
 
 use std::time::Duration;
 
-use gaterdile::db_types::ChannelEvent;
-use gaterdile::handlers::{handle_get_channel, handle_get_prior, handle_get_server, handle_join_server, ConnectionProps};
+use gaterdile::db_types::{ChannelEvent, Message};
+use gaterdile::handlers::{
+    handle_get_channel, handle_get_prior, handle_get_server, handle_join_server, ConnectionProps,
+};
 use gaterdile::transmission::{
-    AuthErr, InsertError, Transmission, NewTransmissionMessage, TransmissionType, UserAuth
+    AuthErr, InsertError, NewTransmissionMessage, Transmission, TransmissionType, UserAuth,
 };
 
 use rocket::futures;
-use rocket::tokio::time::interval;
 use rocket::tokio;
+use rocket::tokio::time::interval;
 
 use rocket::{
     fairing::AdHoc,
     fs::{relative, FileServer},
-    Build,
-    Rocket,
+    Build, Rocket,
 };
 
 use gaterdile::db::{DbConn, User};
@@ -71,12 +72,13 @@ async fn handle_send_message(
             .await;
         return;
     }
-    let message = t_msg.to_message(props.uid);
-    let _x = conn.send_message(message).await;
-    // dbg!(_x);
 
     props.listening_server = Some(props.listening_server.unwrap_or(t_msg.server));
     props.listening_channel = Some(props.listening_server.unwrap_or(t_msg.channel));
+
+    let message = Message::from_newmsg(t_msg, props.uid);
+    let _x = conn.send_message(message).await;
+
     fetch_new_events(props, conn, stream).await;
 }
 
@@ -106,9 +108,6 @@ async fn handle_auth(
     .send(stream)
     .await;
 }
-
-
-
 
 async fn handle_transmission(
     transmission: TransmissionType,
@@ -180,13 +179,12 @@ async fn handle_transmission(
         | TransmissionType::UserServers(_)
         | TransmissionType::JoinServerResult(_)
         | TransmissionType::PriorMessages(_)
-        | TransmissionType::NoMorePrior 
+        | TransmissionType::NoMorePrior
         | TransmissionType::ChannelEvent(_)
         | TransmissionType::ServerEvent(_)
-        | TransmissionType::UserEvent(_)=> {
+        | TransmissionType::UserEvent(_) => {
             let _ = Transmission::invalid().send(stream).await;
         }
-        
     }
 }
 
@@ -237,13 +235,16 @@ async fn fetch_new_events(
                     props.last_sent_id = Some(y.id.unwrap());
                     // let messages = since.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_message(conn));
                     // let messages = futures::future::join_all(messages).await;
-                    let messages = since.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_concrete_unwrap(conn));
+                    let messages = since
+                        .into_iter()
+                        .filter(ChannelEvent::is_message)
+                        .map(|y| y.get_concrete_unwrap(conn));
                     let messages = futures::future::join_all(messages).await;
                     let _ = TransmissionType::ChannelEvent(messages)
                         .wrap_into_transmission()
                         .send(stream)
                         .await;
-                } 
+                }
                 None => {
                     // println!("no new messages")
                 }

@@ -30,7 +30,8 @@ CREATE TABLE messages (
 	sender		BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 	server		BIGINT NOT NULL,
 	channel		BIGINT NOT NULL,
-	reply		BIGINT, 
+	reply		BIGINT REFERENCES messages(id) ON DELETE SET NULL,
+	is_reply 	BOOLEAN NOT NULL,
 	text		TEXT,
 	timestamp	BIGINT
 );
@@ -68,4 +69,11 @@ CREATE TABLE server_events (
 	event_type		INTEGER NOT NULL,
 	creator			BIGINT REFERENCES users(id) ON DELETE CASCADE,
 	deleted			BIGINT
+);
+
+CREATE TABLE auth_tokens (
+	id				BIGSERIAL PRIMARY KEY NOT NULL,
+	expiry			BIGINT NOT NULL,
+	token			TEXT NOT NULL,
+	user_id			BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE
 );

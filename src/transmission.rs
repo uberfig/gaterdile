@@ -1,4 +1,4 @@
-use crate::db_types::{Message, ServerMember};
+use crate::db_types::ServerMember;
 use rocket::{
     futures::SinkExt,
     serde::{Deserialize, Serialize},
@@ -57,7 +57,7 @@ pub struct React {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ChannelInfo {
-    pub messages: Vec<Message>,
+    pub messages: Vec<TransmissionMessage>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -93,28 +93,11 @@ pub struct TransmissionMessage {
     pub server: i64,
     pub channel: i64,
     pub reply: Option<i64>,
+    pub is_reply: bool,
     pub reply_prev: Option<String>,
     pub reply_uid: Option<i64>,
     pub text: String,
     pub timestamp: i64,
-}
-
-impl NewTransmissionMessage {
-    pub fn to_message(&self, uid: i64) -> Message {
-        use std::time::SystemTime;
-        Message {
-            id: None,
-            sender: uid,
-            server: self.server,
-            channel: self.channel,
-            reply: self.reply,
-            text: self.text.clone(),
-            timestamp: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as i64,
-        }
-    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -189,7 +172,7 @@ pub enum TransmissionType {
     ServerInfo(ServerInfoData),
     UserServers(Vec<ServerMember>),
     JoinServerResult(JoinServerResult),
-    PriorMessages(Vec<Message>),
+    PriorMessages(Vec<ChannelEvent>),
     NoMorePrior,
 
     ChannelEvent(Vec<ChannelEvent>),

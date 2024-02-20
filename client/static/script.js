@@ -4,9 +4,10 @@ let subscribed_server = -1;
 let subscribed_channel = -1;
 let uname_map = {};
 let oldest_message = null;
-let loading = false;
+let loading_prior = false;
 let replying = false;
 let reply_id = null;
+let no_more_prior = false;
 
 async function send_clicked() {
 	var input = document.getElementById("message_input").textContent.trim();
@@ -53,7 +54,7 @@ function set_replying(id) {
 	const message = document.getElementById(id)
 	message.classList.add("message_selected");
 	document.getElementById("reply_username").innerText = uname_map[message.dataset.sender]
-	
+
 	replying = true;
 	reply_id = id;
 }
@@ -68,7 +69,7 @@ function end_replying() {
 }
 
 function reply_butt_func(id) {
-	console.log(id);
+	console.log("setting replying"+id);
 	set_replying(id);
 }
 
@@ -79,16 +80,33 @@ async function clear_highlight(element) {
 }
 
 async function scroll_and_highlight(id) {
+	if (id == null) {
+		return;
+	}
+
+	if (document.getElementById(id) == null) {
+
+		while (true) {
+			await new Promise(r => setTimeout(r, 10));
+			if (no_more_prior || document.getElementById(id) != null) {
+				break;
+			}
+			if (loading_prior == true) {
+				continue;
+			}
+			loading_prior = true;
+			get_old_messages(serverConn);
+			
+		}
+	}
 	const element = document.getElementById(id);
+
 	element.scrollIntoView();
 	element.classList.add("fade_bg");
 	element.classList.add("message_highlight");
 
-	console.log("eeping");
-	// await sleep(500);
 	await new Promise(r => setTimeout(r, 600));
-	console.log("wake");
-	
+
 	await clear_highlight(element);
 }
 
@@ -123,24 +141,33 @@ function create_message_element(message) {
 	more_butt.insertAdjacentHTML("afterbegin", more_icon);
 	menu_items.appendChild(more_butt);
 
-	if (message.reply != null) {
+	parent.dataset.reply = message.reply;
+	parent.dataset.is_reply = message.is_reply;
+	if (message.is_reply == true) {
 		const reply = document.createElement("button");
 		reply.classList.add("message_reply");
 		reply.addEventListener('click', () => scroll_and_highlight(message.reply));
 		const reply_preview_icon = feather.icons["corner-up-right"].toSvg({ 'stroke-width': 2, 'color': '#ffffff' });
 		reply.insertAdjacentHTML("afterbegin", reply_preview_icon);
 
-		const preview_uname = document.createElement("p");
-		const preview_uname_text = document.createTextNode(uname_map[message.reply_uid]);
-		preview_uname.appendChild(preview_uname_text);
-		preview_uname.classList.add("username");
-		reply.appendChild(preview_uname);
-
 		const preview = document.createElement("p");
-		const preview_text = document.createTextNode(message.reply_prev);
-		preview.appendChild(preview_text);
+
+		if (reply != null) {
+			const preview_uname = document.createElement("p");
+			const preview_uname_text = document.createTextNode(uname_map[message.reply_uid]);
+			preview_uname.appendChild(preview_uname_text);
+			preview_uname.classList.add("username");
+			reply.appendChild(preview_uname);
+
+			const preview_text = document.createTextNode(message.reply_prev);
+			preview.appendChild(preview_text);
+		} else {
+			const preview_text = document.createTextNode("Message Deleted");
+			preview.appendChild(preview_text);
+		}
+
 		reply.appendChild(preview);
-		
+
 		parent.appendChild(reply);
 	}
 
@@ -197,10 +224,6 @@ function create_message_element(message) {
 	return parent;
 }
 
-// function isHidden(el) {
-//     var style = window.getComputedStyle(el);
-//     return (style.display === 'none')
-// }
 function checkVisible(elm) {
 	var rect = elm.getBoundingClientRect();
 	var viewHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
@@ -212,7 +235,7 @@ function push_notification(username, channel, content) {
 		console.log("hidden");
 		if (!("Notification" in window)) {
 			// Check if the browser supports notifications
-			console.log("This browser does not support desktop notification");
+			console.log("This browser does not support notifications");
 		} else if (Notification.permission === "granted") {
 			// const notification = new Notification(username+" "+channel, { body: content, icon: img });
 			const notification = new Notification(username + " " + channel, { body: content });
@@ -220,42 +243,16 @@ function push_notification(username, channel, content) {
 	}
 }
 
-function handle_NewMessage(message) {
-	const chat = document.getElementById("chat");
+function is_timegroup(timestamp1, timestamp2) {
+	let is_group = Math.abs(timestamp1 - timestamp2) < 4000;
+	return is_group;
+}
 
-	if (oldest_message == null && message.NewMessages.length > 0) {
-		oldest_message = message.NewMessages[0].id; //message.text
-	}
-
-	for (let i = 0; i < message.NewMessages.length; i++) {
-
-		if (message.NewMessages[0].sender != uid) {
-			let name = uname_map[message.NewMessages[0].sender];
-			push_notification(name, "#general", message.NewMessages[0].text);
-		}
-
-
-
-		let para = create_message_element(message.NewMessages[i]);
-		if (chat.lastChild != null && chat.lastChild.dataset != null) {
-
-			if (chat.lastChild.dataset.sender == message.NewMessages[i].sender && message.NewMessages[i].timestamp - chat.lastChild.dataset.timestamp < 4000) {
-				let above = para.querySelector(".username");
-				above.parentElement.style.display = "none";
-				chat.lastChild.style.paddingBottom = "0px"
-			}
-
-		}
-		chat.appendChild(para);
-		if (checkVisible(chat.lastChild)) {
-			para.scrollIntoView();
-		}
-
-	}
+function can_merge_message(message, element) {
+	return element.dataset.sender == message.sender && is_timegroup(message.timestamp, element.dataset.timestamp);
 }
 
 function handle_event_NewMessage(message) {
-	console.log("handling", message);
 
 	const chat = document.getElementById("chat");
 
@@ -269,31 +266,34 @@ function handle_event_NewMessage(message) {
 	}
 
 	let para = create_message_element(message.NewMessage);
-	if (chat.lastChild != null && chat.lastChild.dataset != null) {
+	if (chat.lastChild != null && message.NewMessage.reply == null) {
 
-		if (chat.lastChild.dataset.sender == message.sender && message.timestamp - chat.lastChild.dataset.timestamp < 4000) {
+		if (can_merge_message(message.NewMessage, chat.lastChild)) {
 			let above = para.querySelector(".username");
 			above.parentElement.style.display = "none";
 			chat.lastChild.style.paddingBottom = "0px"
 		}
 
 	}
-	chat.appendChild(para);
-	if (checkVisible(chat.lastChild)) {
+	if (chat.lastChild != null && checkVisible(chat.lastChild)) {
+		chat.appendChild(para);
 		para.scrollIntoView();
+	} else {
+		chat.appendChild(para);
 	}
 }
 
 function handle_PriorMessages(message) {
 	const chat = document.getElementById("chat");
-	loading = false;
 
 	for (let i = message.PriorMessages.length - 1; i >= 0; i--) {
 		oldest_message = message.PriorMessages[i].id;
-		let para = create_message_element(message.PriorMessages[i]);
-		if (chat.firstChild != null && chat.firstChild.dataset != null) {
+		const curr_msg = message.PriorMessages[i].data.NewMessage;
 
-			if (chat.firstChild.dataset.sender == message.PriorMessages[i].sender) {
+		let para = create_message_element(curr_msg);
+		if (chat.firstChild != null && chat.firstChild.dataset.reply == null) {
+
+			if (can_merge_message(curr_msg, chat.firstChild)) {
 				let below = chat.firstChild.querySelector(".username");
 				below.parentElement.style.display = "none";
 				para.style.paddingBottom = "0px"
@@ -302,6 +302,7 @@ function handle_PriorMessages(message) {
 		}
 		chat.prepend(para);
 	}
+	loading_prior = false;
 }
 
 function prompt_auth() {
@@ -362,7 +363,7 @@ async function handle_serverinfo(event) {
 function handle_channelevent(event) {
 
 	for (i in event.ChannelEvent) {
-		console.log(event.ChannelEvent[i]);
+		// console.log(event.ChannelEvent[i]);
 		switch (event.ChannelEvent[i].event_type) {
 			case "NewMessage":
 				handle_event_NewMessage(event.ChannelEvent[i].data);
@@ -503,8 +504,8 @@ function prevent(evt) {
 
 async function check_scroll() {
 	console.log("scrolling");
-	if (checkVisible(document.getElementById("loader")) && loading == false) {
-		loading = true;
+	if (checkVisible(document.getElementById("loader")) && loading_prior == false && no_more_prior == false) {
+		loading_prior = true;
 		// alert("top");
 		get_old_messages(serverConn);
 	}

@@ -8,6 +8,6 @@ extern crate rocket_sync_db_pools;
 
 pub mod db;
 pub mod db_types;
+pub mod handlers;
 pub mod schema;
 pub mod transmission;
-pub mod handlers;

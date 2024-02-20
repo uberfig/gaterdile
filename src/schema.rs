@@ -46,6 +46,7 @@ pub mod db_schema {
             channel -> BigSerial,
             // mention -> Blob,
             reply	-> Nullable<BigSerial>,
+            is_reply -> Bool,
             text	-> Text,
             timestamp	-> BigInt,
         }
