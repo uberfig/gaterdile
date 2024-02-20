@@ -159,7 +159,6 @@ async fn handle_transmission(
         }
         TransmissionType::GetPriorMessages(since) => {
             handle_get_prior(
-                props.listening_server.unwrap_or(-1),
                 props.listening_channel.unwrap_or(-1),
                 conn,
                 stream,

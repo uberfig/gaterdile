@@ -58,7 +58,6 @@ pub async fn handle_get_channel(
 }
 
 pub async fn handle_get_prior(
-    server_id: i64,
     channel_id: i64,
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
@@ -78,7 +77,7 @@ pub async fn handle_get_prior(
     };
 
     let a = conn
-        .get_events_prior(server_id, message.timestamp, last_msg, 40)
+        .get_events_prior(channel_id, message.timestamp, last_msg, 40)
         .await;
 
     if let Ok(x) = a {
