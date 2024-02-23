@@ -1,7 +1,7 @@
 use crate::{
     db::DbConn,
     schema::db_schema,
-    transmission::{self, NewTransmissionMessage, TransmissionChannel, TransmissionMessage},
+    transmission::{self, NewTransmissionMessage, TransmissionChannel, TransmissionMessage, TransmissionServerMember},
 };
 use diesel::result::Error;
 use serde::{Deserialize, Serialize};
@@ -102,6 +102,16 @@ pub struct ServerMember {
     pub server_id: i64,
     pub userid: i64,
     pub nickname: Option<String>,
+}
+
+impl From<ServerMember> for TransmissionServerMember {
+    fn from(value: ServerMember) -> Self {
+        TransmissionServerMember {
+            server_id: value.server_id,
+            userid: value.userid,
+            nickname: value.nickname,
+        }
+    }
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]

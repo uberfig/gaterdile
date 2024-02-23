@@ -1,4 +1,3 @@
-use crate::db_types::ServerMember;
 use rocket::{
     futures::SinkExt,
     serde::{Deserialize, Serialize},
@@ -34,6 +33,13 @@ pub enum JoinServerResult {
     AlreadyInServer,
     NotAuthorised,
     Failure,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TransmissionServerMember {
+    pub server_id: i64,
+    pub userid: i64,
+    pub nickname: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -102,7 +108,7 @@ pub struct TransmissionMessage {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ServerInfoData {
-    pub users: Vec<ServerMember>,
+    pub users: Vec<TransmissionServerMember>,
     pub channels: Vec<TransmissionChannel>,
 }
 
@@ -170,7 +176,7 @@ pub enum TransmissionType {
     AuthResult(AuthErr),
     CreateUserResult(InsertError),
     ServerInfo(ServerInfoData),
-    UserServers(Vec<ServerMember>),
+    UserServers(Vec<TransmissionServerMember>),
     JoinServerResult(JoinServerResult),
     PriorMessages(Vec<ChannelEvent>),
     NoMorePrior,

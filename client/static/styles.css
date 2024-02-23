@@ -31,25 +31,61 @@ body {
     padding: 0%;
     display: flex;
     flex-direction: row;
-    /* .main_content {
-        width: 75%;
-    } */
 }
 
 .communities_and_rooms {
     background-color: var(--medium_dark_bg);
-    /* min-width: 350px; */
     display: flex;
     flex-direction: row;
 }
 
 .communities {
-    min-width: calc(64px + 16px);
+    min-width: calc(50px + 16px);
     background-color: var(--dark_bg);
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow: auto;
+}
+
+.community_butt {
+    background: none;
+	color: inherit;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	outline: inherit;
+    
+    width: 50px;
+    height: 50px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 12px;
+    overflow: hidden;
+    
+    transition: border-radius 0.8s, background-color 0.4s;
+    background-color: var(--text_bg_color);
+    border-radius: 64px;
+}
+
+.community_butt:hover {
+    transition: border-radius 0.3s, background-color 0.4s;
+    background-color: var(--accent_dark);
+    border-radius: 15px;
+}
+
+hr {
+    width: 60%;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 12px;
+    border: 2px solid var(--text_color);
+    border-radius: 4px;
 }
 
 .rooms {
-    min-width: 280px;
+    min-width: 240px;
 }
 
 .main_content {

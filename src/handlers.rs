@@ -1,6 +1,6 @@
 use crate::{
     db::DbConn,
-    db_types::{Channel, ChannelEvent},
+    db_types::{Channel, ChannelEvent, ServerMember},
     transmission::{ServerInfoData, TransmissionType},
 };
 use rocket::futures;
@@ -108,8 +108,9 @@ pub async fn handle_get_server(
     let members_fut = conn.get_server_members(server_id);
     let channels_fut = conn.get_server_channels(server_id);
     let (members, channels) = join!(members_fut, channels_fut);
+    let members = members.unwrap_or(vec![]).into_iter().map(ServerMember::into).collect();
     let data = ServerInfoData {
-        users: members.unwrap_or(vec![]),
+        users: members,
         channels: channels
             .unwrap_or_default()
             .into_iter()
