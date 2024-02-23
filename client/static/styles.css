@@ -12,6 +12,11 @@
 
     --accent_dark: #149262;
     --accent_light: #27b17c;
+
+    --border_color: #1e1f22;
+
+    --dark_bg: #212225;
+    --medium_dark_bg: #26272b;
 }
 
 * {
@@ -24,16 +29,30 @@ body {
     margin: 0%;
     padding: 0%;
     display: flex;
+    flex-direction: row;
     /* .main_content {
         width: 75%;
     } */
+}
+
+.channel_and_servers {
+    background-color: var(--medium_dark_bg);
+    min-width: 400px;
+    display: flex;
+    flex-direction: row;
+}
+
+.servers {
+    min-width: calc(64px + 16px);
+    background-color: var(--dark_bg);
 }
 
 .main_content {
     display: flex;
     flex-direction: column;
     /* flex: 1; */
-    width: 75%;
+    /* width: 75%; */
+    flex-grow: 1;
     max-height: 100vh;
     .input {
         margin-top: auto;
@@ -48,7 +67,7 @@ body {
     /* font-size: large; */
     /* padding-top: 1em; */
     /* /* padding-left: 1em; */
-    border-bottom: 1px solid #1e1f22;
+    border-bottom: 1px solid var(--border_color);
     /* border-bottom: 2px; */
     h1 {
         /* position: relative; */
@@ -202,7 +221,7 @@ body {
 
 .input {
     color: var(--text_color);
-    background-color: #212225;
+    background-color: var(--dark_bg);
     border-top: 2px;
     /* max-width: 100vw; */
     width: 100%;

@@ -18,6 +18,13 @@
 <body>
 
     <div class="channel_and_servers">
+        <div class="servers" id="servers">
+
+        </div>
+
+        <div class="channels" id="channels">
+            
+        </div>
 
     </div>
 
@@ -34,33 +41,33 @@
             <div class="loader" id="loader"></div>
             <div id="chat"></div>
         </div>
-    
+
         <div class="input">
             <div class="input_replying_container" id="input_replying">
-    
+
                 <p>replying to: </p>
                 <p id="reply_username"></p>
-    
+
                 <div style="margin-left: auto;">
                     <button class="close" onclick="end_replying()"><i data-feather="x-circle"></i></button>
                 </div>
 
             </div>
-    
+
             <div class="input_container">
-    
+
                 <div class="text_input_container">
                     <div contenteditable="true" name="text_input" id="message_input" placeholder="message #0,0"
                         class="text_input"></div>
                 </div>
                 <button onclick="send_clicked()"><i data-feather="smile"></i></button>
                 <button class="send" onclick="send_clicked()"><i data-feather="send"></i></button>
-    
+
             </div>
         </div>
 
     </div>
-    
+
 </body>
 
 <div class='auth_prompt' id="auth_prompt">
