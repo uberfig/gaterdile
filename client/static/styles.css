@@ -26,6 +26,7 @@
 }
 
 body {
+    height: 100vh;
     margin: 0%;
     padding: 0%;
     display: flex;
@@ -35,16 +36,20 @@ body {
     } */
 }
 
-.channel_and_servers {
+.communities_and_rooms {
     background-color: var(--medium_dark_bg);
-    min-width: 400px;
+    /* min-width: 350px; */
     display: flex;
     flex-direction: row;
 }
 
-.servers {
+.communities {
     min-width: calc(64px + 16px);
     background-color: var(--dark_bg);
+}
+
+.rooms {
+    min-width: 280px;
 }
 
 .main_content {
@@ -62,6 +67,7 @@ body {
 .top {
     background-color: var(--text_bg_color);
     height: 3em;
+    min-height: 3em;
     max-height: 3em;
     color: var(--text_color);
     /* font-size: large; */
@@ -70,22 +76,19 @@ body {
     border-bottom: 1px solid var(--border_color);
     /* border-bottom: 2px; */
     h1 {
-        /* position: relative; */
         margin-left: 1em;
     }
 
 }
 
 .loader {
-    /* background-color: red; */
     height: 1em;
     flex-shrink: 0;
 }
 
 .chat {
-    flex-shrink: 1;
+    flex: 1;
 
-    height: calc(100vh - 9.5em);
     background-color: var(--text_bg_color);
     color: var(--text_color);
     padding-bottom: 2em;
