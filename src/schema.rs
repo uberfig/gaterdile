@@ -68,9 +68,8 @@ pub mod db_schema {
     }
     table! {
         server_members (server_id, userid) {
-            // id  -> Nullable<Integer>,
-            server_id -> BigSerial,
-            userid  -> BigSerial,
+            server_id -> BigInt,
+            userid  -> BigInt,
             nickname -> Nullable<Text>,
         }
     }

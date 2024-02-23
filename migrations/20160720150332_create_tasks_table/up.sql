@@ -44,10 +44,10 @@ CREATE TABLE reactions (
 );
 
 CREATE TABLE server_members (
-	id			BIGSERIAL PRIMARY KEY NOT NULL,
 	server_id	BIGINT NOT NULL,
 	userid		BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-	nickname	TEXT
+	nickname	TEXT,
+	PRIMARY KEY(server_id, userid)
 );
 
 CREATE TABLE channel_events (
