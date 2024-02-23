@@ -2,7 +2,6 @@
     --text_color: rgb(231, 230, 216);
     --light_text_color: rgba(231, 230, 216, 0.822);
 
-
     --text_bg_color: rgb(44, 46, 51);
 
     --text_bg_hover_color: rgb(39, 40, 44);
@@ -15,15 +14,30 @@
     --accent_light: #27b17c;
 }
 
-html {
-    /* background-color: var(--text_bg_color); */
-}
-
 * {
     margin: 0%;
-    /* font-size: 1.05em; */
     font-size: 1em;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    margin: 0%;
+    padding: 0%;
+    display: flex;
+    /* .main_content {
+        width: 75%;
+    } */
+}
+
+.main_content {
+    display: flex;
+    flex-direction: column;
+    /* flex: 1; */
+    width: 75%;
+    max-height: 100vh;
+    .input {
+        margin-top: auto;
+    }
 }
 
 .top {
@@ -36,10 +50,11 @@ html {
     /* /* padding-left: 1em; */
     border-bottom: 1px solid #1e1f22;
     /* border-bottom: 2px; */
-    /* h1 {
-        position: relative;
-        margin-top: 1em;
-    } */
+    h1 {
+        /* position: relative; */
+        margin-left: 1em;
+    }
+
 }
 
 .loader {
@@ -48,9 +63,9 @@ html {
     flex-shrink: 0;
 }
 
-
-
 .chat {
+    flex-shrink: 1;
+
     height: calc(100vh - 9.5em);
     background-color: var(--text_bg_color);
     color: var(--text_color);
@@ -109,11 +124,7 @@ html {
     }
 }
 
-.message:hover {
-    /* background-color: rgba(121, 121, 121, 0.5); */
-    /* background-color: var(--text_bg_hover_color); */
-
-    
+.message:hover {    
     background-color: var(--text_bg_hover_color);
 
     .hovermenu {
@@ -191,34 +202,29 @@ html {
 
 .input {
     color: var(--text_color);
-    /* border-top: 1px solid #1e1f22; */
-    /* background-color: rgb(53, 55, 75); */
-    /* background-color: #2c2e33; */
     background-color: #212225;
     border-top: 2px;
-    /* min-height: 3em; */
-    /* max-width: fit-content; */
-    max-width: 100vw;
+    /* max-width: 100vw; */
     width: 100%;
-    /* padding: 0.5em; */
+    
+    /* width: auto; */
 
     padding-top: 0.5em;
     padding-bottom: 1em;
 
-    /* justify-content: center;  */
-    /* position:relative; */
-    position: absolute;
+    /* position: absolute; */
+    position: relative;
     bottom: 0;
+
+    vertical-align: bottom;
 
     button {
         height: min-content;
         border: none;
-        /* border-radius: 20px; */
         border-radius: 100%;
         aspect-ratio: 1;
         background-color: #212225;
         padding: 5px;
-        /* background-color: #2c2e33; */
     }
 
     button:hover {
@@ -244,14 +250,6 @@ html {
     margin-left: 1em;
     margin-right: 1em;
     padding-top: 0.5em;
-
-    /* margin: 1em; */
-
-    /* background-color: #1e1f22; */
-    /* margin-left: 0.5em; */
-    /* width: 100%; */
-    /* padding-left: 0.5em;
-    padding-right: 0.5em; */
 }
 
 .input_replying_container {
@@ -292,8 +290,8 @@ html {
 .text_input:focus {
     outline: none !important;
     /* border: 2px solid #149262; */
-    border-color: #149262;
-    /* border-color: #27b17c; */
+    /* border-color: #149262; */
+    border-color: var(--accent_light);
 }
 
 .auth_prompt {

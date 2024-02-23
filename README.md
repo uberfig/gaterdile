@@ -14,6 +14,7 @@ this is roughly my todo list for now, it will most likely happen in this order b
 - [ ]  server custom emoji support
 - [ ]  client custom emoji rendering
 - [ ]  create emoji picker
+- [ ]  custom context menu
 - [ ]  add server unit testing
 - [ ]  0.1 release with stablized sql migration
 

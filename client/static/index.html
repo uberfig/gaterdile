@@ -16,47 +16,51 @@
 </head>
 
 <body>
-    <div class="top">
-        <div
-            style="height: 100%; display: flex; flex-direction: column; justify-content: center; position:relative; padding: auto;">
-            <h1>#general</h1>
-        </div>
 
-    </div>
-    <div class="chat" onscroll="check_scroll()">
-        <div class="loader" id="loader"></div>
-        <div id="chat"></div>
-    </div>
-
+    <div class="channel_and_servers">
 
     </div>
 
+    <div class="main_content">
 
-    <div class="input">
-        <div class="input_replying_container" id="input_replying">
-
-            <p>replying to: </p>
-            <p id="reply_username"></p>
-
-            <div style="margin-left: auto;">
-                <button class="close" onclick="end_replying()"><i data-feather="x-circle"></i></button>
+        <div class="top">
+            <div
+                style="height: 100%; display: flex; flex-direction: column; justify-content: center; position:relative; padding: auto;">
+                <h1>#general</h1>
             </div>
-            <!-- <div class="reply_container">
-                
-            </div> -->
         </div>
 
-        <div class="input_container">
+        <div class="chat" onscroll="check_scroll()">
+            <div class="loader" id="loader"></div>
+            <div id="chat"></div>
+        </div>
+    
+        <div class="input">
+            <div class="input_replying_container" id="input_replying">
+    
+                <p>replying to: </p>
+                <p id="reply_username"></p>
+    
+                <div style="margin-left: auto;">
+                    <button class="close" onclick="end_replying()"><i data-feather="x-circle"></i></button>
+                </div>
 
-            <div class="text_input_container">
-                <div contenteditable="true" name="text_input" id="message_input" placeholder="message #0,0"
-                    class="text_input"></div>
             </div>
-            <button onclick="send_clicked()"><i data-feather="smile"></i></button>
-            <button class="send" onclick="send_clicked()"><i data-feather="send"></i></button>
-
+    
+            <div class="input_container">
+    
+                <div class="text_input_container">
+                    <div contenteditable="true" name="text_input" id="message_input" placeholder="message #0,0"
+                        class="text_input"></div>
+                </div>
+                <button onclick="send_clicked()"><i data-feather="smile"></i></button>
+                <button class="send" onclick="send_clicked()"><i data-feather="send"></i></button>
+    
+            </div>
         </div>
+
     </div>
+    
 </body>
 
 <div class='auth_prompt' id="auth_prompt">
@@ -83,9 +87,6 @@
             </form>
         </div>
     </div>
-    <!-- <div class="signup" id="signup">
-        <h1>Login</h1>
-    </div> -->
 </div>
 
 </html>
