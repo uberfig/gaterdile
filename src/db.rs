@@ -7,7 +7,7 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-use rocket::serde::{Deserialize, Serialize};
+use rocket::serde::Deserialize;
 
 #[derive(Deserialize, Queryable, Insertable, Debug)]
 #[diesel(table_name = db_schema::users)]
@@ -84,7 +84,7 @@ use diesel::{prelude::*, result::Error, sql_types::Integer};
 
 #[derive(QueryableByName)]
 pub struct InsertedRowId {
-    #[sql_type = "Integer"]
+    #[diesel(sql_type = Integer)]
     pub id: i32,
 }
 

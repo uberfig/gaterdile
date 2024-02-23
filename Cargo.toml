@@ -15,7 +15,7 @@ tracing = "0.1.40"
 
 rocket_sync_db_pools = { version = "0.1.0-rc.3", features = ["diesel_postgres_pool"] }
 rocket_dyn_templates = { version = "0.1.0-rc.3", features = ["tera"] }
-rocket_contrib = "0.4.2"
+# rocket_contrib = "0.4.2"
 rocket_ws = "0.1.0"
 rocket = "0.5.0"
 
