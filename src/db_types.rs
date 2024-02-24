@@ -101,7 +101,6 @@ impl Message {
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
 #[diesel(table_name = db_schema::server_members)]
 pub struct ServerMember {
-    // pub id: Option<i32>,
     pub server_id: i64,
     pub userid: i64,
     pub nickname: Option<String>,
@@ -316,4 +315,12 @@ impl ChannelEventType {
             },
         }
     }
+}
+
+#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
+#[diesel(table_name = db_schema::servers)]
+pub struct Community {
+    id: Option<i64>,
+    nickname: String,
+    owner: i64,
 }

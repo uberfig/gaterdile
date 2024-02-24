@@ -343,9 +343,9 @@ async function handle_AuthResult(serverConn, event) {
 	if (event.data.AuthResult.hasOwnProperty("Success")) {
 		console.log("Login Success");
 		auth_success(event.data.AuthResult.Success);
-		join_server(serverConn, 0);
-		get_server(serverConn, 0);
-		get_channel(serverConn, 0, 0);
+		join_community(serverConn, 0);
+		get_community(serverConn, 0);
+		get_room(serverConn, 0, 0);
 	} else {
 		auth_failure(event.data.AuthResult);
 	}
@@ -414,7 +414,7 @@ async function handle_event(serverConn, event) {
 		case "PriorMessages":
 			handle_PriorMessages(event.data);
 			break;
-		case "UserServers":
+		case "UserCommunities":
 
 			break;
 		case "JoinServerResult":

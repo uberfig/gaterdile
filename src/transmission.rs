@@ -12,6 +12,13 @@ pub struct TransmissionChannel {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TransmissionCommunity {
+    id: Option<i64>,
+    nickname: String,
+    owner: i64,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum InsertError {
     Success(usize),
     UsernameTaken,
@@ -165,9 +172,9 @@ pub enum TransmissionType {
 
     CreateUser(UserAuth),
 
-    GetServer(i64), //requests to get server info
+    GetCommunity(i64), //requests to get server info
     GetUserServers,
-    JoinServer(i64),
+    JoinCommunity(i64),
     CreateCommunity(String), //create server with given nickname
     GetRoom(i64, i64),       //server, channel gets the channels recent messages
     CreateRoom(i64, String), //request to create a room in provided server with provided nickname
@@ -181,7 +188,7 @@ pub enum TransmissionType {
     AuthResult(AuthErr),
     CreateUserResult(InsertError),
     ServerInfo(ServerInfoData),
-    UserServers(Vec<TransmissionServerMember>),
+    UserCommunities(Vec<TransmissionCommunity>),
     JoinServerResult(JoinServerResult),
     PriorMessages(Vec<ChannelEvent>),
     NoMorePrior,
@@ -199,15 +206,15 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::RequestAuth => write!(f, "RequestAuth"),
             TransmissionType::Auth(_) => write!(f, "Auth"),
             TransmissionType::AuthResult(_) => write!(f, "AuthResult"),
-            TransmissionType::GetServer(_) => write!(f, "GetServer"),
+            TransmissionType::GetCommunity(_) => write!(f, "GetServer"),
             TransmissionType::GetRoom(..) => write!(f, "GetChannel"),
             TransmissionType::CreateUser(_) => write!(f, "CreateUser"),
             TransmissionType::InvalidTransmission => write!(f, "InvalidTransmission"),
             TransmissionType::CreateUserResult(_) => write!(f, "CreateUserResult"),
             TransmissionType::ServerInfo(_) => write!(f, "ServerInfo"),
             TransmissionType::GetUserServers => write!(f, "GetUserServers"),
-            TransmissionType::UserServers(_) => write!(f, "UserServers"),
-            TransmissionType::JoinServer(_) => write!(f, "JoinServer"),
+            TransmissionType::UserCommunities(_) => write!(f, "UserServers"),
+            TransmissionType::JoinCommunity(_) => write!(f, "JoinServer"),
             TransmissionType::JoinServerResult(_) => write!(f, "JoinServerResult"),
             TransmissionType::GetPriorMessages(_) => write!(f, "GetPriorMessages"),
             TransmissionType::PriorMessages(_) => write!(f, "PriorMessages"),
@@ -218,7 +225,7 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::ServerEvent(_) => write!(f, "ServerEvent"),
             TransmissionType::UserEvent(_) => write!(f, "UserEvent"),
             TransmissionType::CreateCommunity(_) => write!(f, "CreateCommunity"),
-            TransmissionType::CreateRoom(_, _) => write!(f, "CreateRoom"),
+            TransmissionType::CreateRoom(..) => write!(f, "CreateRoom"),
         }
     }
 }

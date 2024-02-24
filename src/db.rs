@@ -273,7 +273,7 @@ impl DbConn {
         .await
     }
 
-    pub async fn get_events_since_timestamp_and_id(
+    pub async fn get_room_events_since_timestamp_and_id(
         &self,
         channel_id: i64,
         since: i64,

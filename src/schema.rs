@@ -11,21 +11,21 @@ pub mod db_schema {
         servers {
             id -> Nullable<BigSerial>,
             nickname -> Text,
-            owner -> BigSerial,
+            owner -> BigInt,
         }
     }
     table! {
         emojis {
             id      -> Nullable<BigSerial>,
-            server  -> BigSerial,
+            server  -> BigInt,
             name    -> Text,
-            attachmentid -> BigSerial,
+            attachmentid -> BigInt,
         }
     }
     table! {
         channels (id, server) {
             id 		-> Nullable<BigSerial>,
-            server 	-> BigSerial,
+            server 	-> BigInt,
             name 	-> Text,
         }
     }
@@ -33,8 +33,8 @@ pub mod db_schema {
         attachments {
             id -> BigSerial,
             name -> Text,
-            owner -> BigSerial,
-            server -> BigSerial,
+            owner -> BigInt,
+            server -> BigInt,
             content -> Blob,
         }
     }
@@ -54,16 +54,16 @@ pub mod db_schema {
     table! {
         mentions {
             id 		-> BigSerial, //message id
-            userid  -> Nullable<BigSerial>,
-            roleid  -> Nullable<BigSerial>
+            userid  -> Nullable<BigInt>,
+            roleid  -> Nullable<BigInt>
         }
     }
     table! {
         reactions (id) {
             id -> BigSerial,
-            userid 	-> BigSerial,
-            messageid -> BigSerial,
-            emoji	-> BigSerial,
+            userid 	-> BigInt,
+            messageid -> BigInt,
+            emoji	-> BigInt,
         }
     }
     table! {
@@ -76,23 +76,33 @@ pub mod db_schema {
     table! {
         channel_events {
             id -> Nullable<BigSerial>,
-            channel_id -> BigSerial,
-            server_id -> BigSerial,
+            channel_id -> BigInt,
+            server_id -> BigInt,
             timestamp -> BigInt,
             event_type -> Integer,
-            message -> Nullable<BigSerial>,
-            reaction -> Nullable<BigSerial>,
-            creator -> Nullable<BigSerial>,
-            deleted -> Nullable<BigSerial>,
+            message -> Nullable<BigInt>,
+            reaction -> Nullable<BigInt>,
+            creator -> Nullable<BigInt>,
+            deleted -> Nullable<BigInt>,
         }
     }
     table! {
         server_events {
             id -> Nullable<BigSerial>,
-            server_id -> BigSerial,
+            server_id -> BigInt,
             timestamp -> BigInt,
             event_type -> Integer,
             creator -> Nullable<BigSerial>,
+            deleted -> Nullable<BigSerial>,
+        }
+    }
+    table! {
+        user_events {
+            id -> Nullable<BigSerial>,
+            user_id -> BigInt,
+            timestamp -> BigInt,
+            event_type -> Integer,
+            community -> Nullable<BigSerial>,
             deleted -> Nullable<BigSerial>,
         }
     }

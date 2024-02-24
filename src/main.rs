@@ -60,28 +60,33 @@ async fn handle_transmission(
         TransmissionType::Auth(user) => {
             handle_auth(user, props, conn, stream).await;
         }
-        TransmissionType::GetRoom(server_id, channel_id) => {
-            handle_get_channel(server_id, channel_id, props, conn, stream).await;
-        }
-        TransmissionType::GetServer(server_id) => {
-            handle_get_server(server_id, conn, stream).await;
-        }
         TransmissionType::CreateUser(x) => {
             handle_create_user(x, props, conn, stream).await;
+        }
+
+        //------------community management----------
+        TransmissionType::CreateCommunity(_) => {
+            todo!()
+        },
+        TransmissionType::JoinCommunity(server_id) => {
+            handle_join_server(server_id, props.uid, conn, stream).await;
+        }
+        TransmissionType::GetCommunity(server_id) => {
+            handle_get_server(server_id, conn, stream).await;
         }
         TransmissionType::GetUserServers => {
             todo!()
         }
-        TransmissionType::JoinServer(server_id) => {
-            handle_join_server(server_id, props.uid, conn, stream).await;
+        TransmissionType::CreateRoom(_, _) => todo!(),
+        TransmissionType::GetRoom(server_id, channel_id) => {
+            handle_get_channel(server_id, channel_id, props, conn, stream).await;
         }
+        
         TransmissionType::GetPriorMessages(since) => {
             handle_get_prior(props.listening_channel.unwrap_or(-1), conn, stream, since).await
         }
         TransmissionType::GetEmoji(_) => todo!(),
         TransmissionType::GetAttachment(_) => todo!(),
-        TransmissionType::CreateCommunity(_) => todo!(),
-        TransmissionType::CreateRoom(_, _) => todo!(),
 
         //-----------------------------invalid types from client------------------------------------
         TransmissionType::InvalidTransmission
@@ -89,7 +94,7 @@ async fn handle_transmission(
         | TransmissionType::AuthResult(_)
         | TransmissionType::CreateUserResult(_)
         | TransmissionType::ServerInfo(_)
-        | TransmissionType::UserServers(_)
+        | TransmissionType::UserCommunities(_)
         | TransmissionType::JoinServerResult(_)
         | TransmissionType::PriorMessages(_)
         | TransmissionType::NoMorePrior
@@ -104,7 +109,6 @@ async fn handle_transmission(
 //with thanks to this issue I found online: https://stackoverflow.com/questions/77780189/how-to-detect-rust-rocket-ws-client-disconnected-from-websocket
 #[get("/ws")]
 pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> {
-    // use rocket::futures::{SinkExt, StreamExt};
     use rocket::futures::StreamExt;
 
     ws.channel(move |mut stream: ws::stream::DuplexStream| {
@@ -115,7 +119,7 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
 			tokio::spawn(async move {
 				let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
 
-                let _ = TransmissionType::JoinServer(0).wrap_into_transmission().send(&mut stream).await;
+                let _ = TransmissionType::JoinCommunity(0).wrap_into_transmission().send(&mut stream).await;
 				loop {
 					tokio::select! {
 						_ = interval.tick() => {
@@ -131,7 +135,6 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
 									println!("Received Text message: {}", text);
 									let data = Transmission::parse(&text).unwrap_or(Transmission { data: TransmissionType::InvalidTransmission, transmission_type: "".to_string() });
 
-									// let parsed = TransmissionType::parse(&text).unwrap_or(TransmissionType::InvalidTransmission);
 									handle_transmission(data.data, &mut props, &conn, &mut stream).await;
 								}
 								ws::Message::Binary(data) => {

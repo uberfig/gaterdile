@@ -7,18 +7,18 @@ class Transmission {
 	}
 }
 
-class JoinServer {
-	JoinServer;
+class JoinCommunity {
+	JoinCommunity;
 	constructor(id) {
-		this.JoinServer = id;
+		this.JoinCommunity = id;
 	}
 }
 
 class GetChannelTransmit {
-	GetChannel = [];
+	GetRoom = [];
 	constructor(server, channel) {
-		this.GetChannel.push(server);
-		this.GetChannel.push(channel);
+		this.GetRoom.push(server);
+		this.GetRoom.push(channel);
 	}
 }
 
@@ -54,10 +54,10 @@ class GetPriorMessages {
 	}
 }
 
-class GetServer {
-	GetServer;
+class GetCommunity {
+	GetCommunity;
 	constructor(server_id) {
-		this.GetServer = server_id;
+		this.GetCommunity = server_id;
 	}
 }
 

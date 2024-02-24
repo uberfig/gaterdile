@@ -59,7 +59,7 @@ pub async fn fetch_new_events(
     let x = props.last_sent_timestamp.unwrap();
 
     let since = conn
-        .get_events_since_timestamp_and_id(
+        .get_room_events_since_timestamp_and_id(
             props.listening_channel.unwrap(),
             x,
             props.last_sent_id.unwrap(),
@@ -80,8 +80,7 @@ pub async fn fetch_new_events(
 
                     props.last_sent_timestamp = Some(y.timestamp);
                     props.last_sent_id = Some(y.id.unwrap());
-                    // let messages = since.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_message(conn));
-                    // let messages = futures::future::join_all(messages).await;
+
                     let messages = since
                         .into_iter()
                         .filter(ChannelEvent::is_message)
@@ -204,8 +203,6 @@ pub async fn handle_get_channel(
             .filter(ChannelEvent::is_message)
             .map(|y| y.get_concrete_unwrap(conn));
         let messages = futures::future::join_all(messages).await;
-        // let messages = x.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_message(conn));
-        // let messages = futures::future::join_all(messages).await;
 
         let _ = TransmissionType::ChannelEvent(messages)
             .wrap_into_transmission()

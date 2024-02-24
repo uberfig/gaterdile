@@ -1,10 +1,10 @@
-async function get_channel(serverConn, server, channel) {
+async function get_room(serverConn, server, channel) {
 	const val = new Transmission("GetChannel", new GetChannelTransmit(server, channel));
 	serverConn.send(JSON.stringify(val));
 }
 
-async function join_server(serverConn, server) {
-	const val = new Transmission("JoinServer", new JoinServer(server));
+async function join_community(serverConn, server) {
+	const val = new Transmission("JoinServer", new JoinCommunity(server));
 	serverConn.send(JSON.stringify(val));
 }
 
@@ -14,8 +14,8 @@ async function get_old_messages(serverConn) {
 	serverConn.send(JSON.stringify(out));
 }
 
-async function get_server(serverConn, server_id) {
-	var out = new Transmission("GetServer", new GetServer(server_id));
+async function get_community(serverConn, server_id) {
+	var out = new Transmission("GetServer", new GetCommunity(server_id));
 	serverConn.send(JSON.stringify(out));
 }
 
