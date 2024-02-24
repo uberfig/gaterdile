@@ -3,7 +3,7 @@ url = "postgres://ivy:password@localhost/gaterdile_dev"
 timeout = 10
 
 [release.databases.diesel]
-url = "../qc-database/db.sqlite"
+url = "postgres://username:password@localhost/gaterdile"
 
 # [development]
 # address = "localhost"
