@@ -351,6 +351,16 @@ async function handle_AuthResult(serverConn, event) {
 	}
 }
 
+function create_room_element(TransmissionChannel) {
+	const parent = document.createElement("button");
+	parent.classList.add("room_button");
+	const text  = document.createTextNode("# "+TransmissionChannel.name);
+	parent.appendChild(text);
+	parent.dataset.channelid = TransmissionChannel.id
+
+	return parent;
+}
+
 async function handle_serverinfo(event) {
 	event = event.ServerInfo;
 	for (let index = 0; index < event.users.length; index++) {
@@ -358,6 +368,11 @@ async function handle_serverinfo(event) {
 		uname_map[event.users[index].userid] = event.users[index].nickname;
 	}
 	console.log(uname_map);
+	const room_container = document.getElementById("rooms");
+	for (let index = 0; index < event.channels.length; index++) {
+		console.log(event.channels[index].name);
+		room_container.appendChild(create_room_element(event.channels[index]));
+	}
 }
 
 function handle_channelevent(event) {

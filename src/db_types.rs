@@ -1,7 +1,10 @@
 use crate::{
     db::DbConn,
     schema::db_schema,
-    transmission::{self, NewTransmissionMessage, TransmissionChannel, TransmissionMessage, TransmissionServerMember},
+    transmission::{
+        self, NewTransmissionMessage, TransmissionChannel, TransmissionMessage,
+        TransmissionServerMember,
+    },
 };
 use diesel::result::Error;
 use serde::{Deserialize, Serialize};

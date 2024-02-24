@@ -162,12 +162,17 @@ pub enum TransmissionType {
     SendMessage(NewTransmissionMessage),
     Reaction(React),
     Auth(UserAuth),
-    GetServer(i64),       //requests to get server info
-    GetChannel(i64, i64), //server, channel gets the channels recent messages
+
     CreateUser(UserAuth),
+
+    GetServer(i64), //requests to get server info
     GetUserServers,
     JoinServer(i64),
-    GetPriorMessages(i64),
+    CreateCommunity(String), //create server with given nickname
+    GetRoom(i64, i64),       //server, channel gets the channels recent messages
+    CreateRoom(i64, String), //request to create a room in provided server with provided nickname
+
+    GetPriorMessages(i64), //get messages prior to provided value
     GetEmoji(i64),
     GetAttachment(i64),
     //from server only:
@@ -195,7 +200,7 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::Auth(_) => write!(f, "Auth"),
             TransmissionType::AuthResult(_) => write!(f, "AuthResult"),
             TransmissionType::GetServer(_) => write!(f, "GetServer"),
-            TransmissionType::GetChannel(..) => write!(f, "GetChannel"),
+            TransmissionType::GetRoom(..) => write!(f, "GetChannel"),
             TransmissionType::CreateUser(_) => write!(f, "CreateUser"),
             TransmissionType::InvalidTransmission => write!(f, "InvalidTransmission"),
             TransmissionType::CreateUserResult(_) => write!(f, "CreateUserResult"),
@@ -212,6 +217,8 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::ChannelEvent(_) => write!(f, "ChannelEvent"),
             TransmissionType::ServerEvent(_) => write!(f, "ServerEvent"),
             TransmissionType::UserEvent(_) => write!(f, "UserEvent"),
+            TransmissionType::CreateCommunity(_) => write!(f, "CreateCommunity"),
+            TransmissionType::CreateRoom(_, _) => write!(f, "CreateRoom"),
         }
     }
 }

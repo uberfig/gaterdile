@@ -1,7 +1,10 @@
 use crate::{
-    db::DbConn,
-    db_types::{Channel, ChannelEvent, ServerMember},
-    transmission::{ServerInfoData, TransmissionType},
+    db::{DbConn, User},
+    db_types::{Channel, ChannelEvent, Message, ServerMember},
+    transmission::{
+        AuthErr, InsertError, NewTransmissionMessage, ServerInfoData, Transmission,
+        TransmissionType, UserAuth,
+    },
 };
 use rocket::futures;
 use rocket::tokio::join;
@@ -15,6 +18,160 @@ pub struct ConnectionProps {
     pub listening_channel: Option<i64>,
     pub last_sent_timestamp: Option<i64>,
     pub last_sent_id: Option<i64>,
+}
+
+async fn create_user(conn: &DbConn, user: UserAuth) -> InsertError {
+    if user.username.is_empty() {
+        return InsertError::InvalidUsername;
+    }
+
+    User::insert(user, conn).await
+}
+
+async fn auth_user(conn: &DbConn, user: UserAuth) -> AuthErr {
+    if user.username.is_empty() {
+        return AuthErr::InvalidUsername;
+    }
+    User::auth(user, conn).await
+}
+
+pub async fn fetch_new_events(
+    props: &mut ConnectionProps,
+    conn: &DbConn,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    if props.listening_channel.is_none() || props.listening_server.is_none() {
+        return;
+    }
+
+    if props.last_sent_timestamp.is_none() {
+        handle_get_channel(
+            props.listening_server.unwrap(),
+            props.listening_channel.unwrap(),
+            props,
+            conn,
+            stream,
+        )
+        .await;
+        return;
+    }
+
+    let x = props.last_sent_timestamp.unwrap();
+
+    let since = conn
+        .get_events_since_timestamp_and_id(
+            props.listening_channel.unwrap(),
+            x,
+            props.last_sent_id.unwrap(),
+            10,
+        )
+        .await;
+
+    match since {
+        Ok(since) => {
+            let newlast = since.get(since.len().wrapping_sub(1));
+            match newlast {
+                Some(y) => {
+                    if y.id == props.last_sent_id {
+                        return;
+                    }
+                    println!("newlast id: ");
+                    dbg!(y.id);
+
+                    props.last_sent_timestamp = Some(y.timestamp);
+                    props.last_sent_id = Some(y.id.unwrap());
+                    // let messages = since.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_message(conn));
+                    // let messages = futures::future::join_all(messages).await;
+                    let messages = since
+                        .into_iter()
+                        .filter(ChannelEvent::is_message)
+                        .map(|y| y.get_concrete_unwrap(conn));
+                    let messages = futures::future::join_all(messages).await;
+                    let _ = TransmissionType::ChannelEvent(messages)
+                        .wrap_into_transmission()
+                        .send(stream)
+                        .await;
+                }
+                None => {
+                    // println!("no new messages")
+                }
+            }
+        }
+        Err(e) => println!("no new messages or db errr {}", e),
+    }
+}
+
+pub async fn handle_send_message(
+    t_msg: NewTransmissionMessage,
+    props: &mut ConnectionProps,
+    conn: &DbConn,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    if t_msg.text.trim().is_empty() {
+        let _ = TransmissionType::InvalidTransmission
+            .wrap_into_transmission()
+            .send(stream)
+            .await;
+        return;
+    }
+
+    props.listening_server = Some(props.listening_server.unwrap_or(t_msg.server));
+    props.listening_channel = Some(props.listening_server.unwrap_or(t_msg.channel));
+
+    let message = Message::from_newmsg(t_msg, props.uid);
+    let _x = conn.send_message(message).await;
+
+    fetch_new_events(props, conn, stream).await;
+}
+
+pub async fn handle_auth(
+    user: UserAuth,
+    props: &mut ConnectionProps,
+    conn: &DbConn,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    let auth = auth_user(conn, user).await;
+    match auth {
+        AuthErr::Success(x) => {
+            props.authenticated = true;
+            props.uid = x;
+        }
+        _ => {
+            props.authenticated = false;
+            props.uid = -1;
+        }
+    }
+    let a_result = TransmissionType::AuthResult(auth);
+    let name = a_result.to_string();
+    let _ = Transmission {
+        data: a_result,
+        transmission_type: name,
+    }
+    .send(stream)
+    .await;
+}
+
+pub async fn handle_create_user(
+    x: UserAuth,
+    props: &mut ConnectionProps,
+    conn: &DbConn,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    let err = create_user(conn, x).await;
+    match err {
+        InsertError::Success(x) => {
+            props.authenticated = true;
+            props.uid = x.try_into().unwrap();
+        }
+        _ => {
+            props.authenticated = false;
+            props.uid = -1;
+        }
+    }
+    let _ = TransmissionType::CreateUserResult(err)
+        .wrap_into_transmission()
+        .send(stream)
+        .await;
 }
 
 pub async fn handle_get_channel(
@@ -108,7 +265,11 @@ pub async fn handle_get_server(
     let members_fut = conn.get_server_members(server_id);
     let channels_fut = conn.get_server_channels(server_id);
     let (members, channels) = join!(members_fut, channels_fut);
-    let members = members.unwrap_or(vec![]).into_iter().map(ServerMember::into).collect();
+    let members = members
+        .unwrap_or(vec![])
+        .into_iter()
+        .map(ServerMember::into)
+        .collect();
     let data = ServerInfoData {
         users: members,
         channels: channels

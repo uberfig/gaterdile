@@ -6,15 +6,12 @@ extern crate rocket;
 
 use std::time::Duration;
 
-use gaterdile::db_types::{ChannelEvent, Message};
 use gaterdile::handlers::{
-    handle_get_channel, handle_get_prior, handle_get_server, handle_join_server, ConnectionProps,
+    fetch_new_events, handle_auth, handle_create_user, handle_get_channel, handle_get_prior,
+    handle_get_server, handle_join_server, handle_send_message, ConnectionProps,
 };
-use gaterdile::transmission::{
-    AuthErr, InsertError, NewTransmissionMessage, Transmission, TransmissionType, UserAuth,
-};
+use gaterdile::transmission::{Transmission, TransmissionType};
 
-use rocket::futures;
 use rocket::tokio;
 use rocket::tokio::time::interval;
 
@@ -24,7 +21,7 @@ use rocket::{
     Build, Rocket,
 };
 
-use gaterdile::db::{DbConn, User};
+use gaterdile::db::DbConn;
 use rocket_ws as ws;
 
 async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
@@ -42,71 +39,6 @@ async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
         .await;
 
     rocket
-}
-
-async fn create_user(conn: &DbConn, user: UserAuth) -> InsertError {
-    if user.username.is_empty() {
-        return InsertError::InvalidUsername;
-    }
-
-    User::insert(user, conn).await
-}
-
-async fn auth_user(conn: &DbConn, user: UserAuth) -> AuthErr {
-    if user.username.is_empty() {
-        return AuthErr::InvalidUsername;
-    }
-    User::auth(user, conn).await
-}
-
-async fn handle_send_message(
-    t_msg: NewTransmissionMessage,
-    props: &mut ConnectionProps,
-    conn: &DbConn,
-    stream: &mut ws::stream::DuplexStream,
-) {
-    if t_msg.text.trim().is_empty() {
-        let _ = TransmissionType::InvalidTransmission
-            .wrap_into_transmission()
-            .send(stream)
-            .await;
-        return;
-    }
-
-    props.listening_server = Some(props.listening_server.unwrap_or(t_msg.server));
-    props.listening_channel = Some(props.listening_server.unwrap_or(t_msg.channel));
-
-    let message = Message::from_newmsg(t_msg, props.uid);
-    let _x = conn.send_message(message).await;
-
-    fetch_new_events(props, conn, stream).await;
-}
-
-async fn handle_auth(
-    user: UserAuth,
-    props: &mut ConnectionProps,
-    conn: &DbConn,
-    stream: &mut ws::stream::DuplexStream,
-) {
-    let auth = auth_user(conn, user).await;
-    match auth {
-        AuthErr::Success(x) => {
-            props.authenticated = true;
-            props.uid = x;
-        }
-        _ => {
-            props.authenticated = false;
-            props.uid = -1;
-        }
-    }
-    let a_result = TransmissionType::AuthResult(auth);
-    let name = a_result.to_string();
-    let _ = Transmission {
-        data: a_result,
-        transmission_type: name,
-    }
-    .send(stream)
-    .await;
 }
 
 async fn handle_transmission(
@@ -128,28 +60,14 @@ async fn handle_transmission(
         TransmissionType::Auth(user) => {
             handle_auth(user, props, conn, stream).await;
         }
-        TransmissionType::GetChannel(server_id, channel_id) => {
+        TransmissionType::GetRoom(server_id, channel_id) => {
             handle_get_channel(server_id, channel_id, props, conn, stream).await;
         }
         TransmissionType::GetServer(server_id) => {
             handle_get_server(server_id, conn, stream).await;
         }
         TransmissionType::CreateUser(x) => {
-            let err = create_user(conn, x).await;
-            match err {
-                InsertError::Success(x) => {
-                    props.authenticated = true;
-                    props.uid = x.try_into().unwrap();
-                }
-                _ => {
-                    props.authenticated = false;
-                    props.uid = -1;
-                }
-            }
-            let _ = TransmissionType::CreateUserResult(err)
-                .wrap_into_transmission()
-                .send(stream)
-                .await;
+            handle_create_user(x, props, conn, stream).await;
         }
         TransmissionType::GetUserServers => {
             todo!()
@@ -162,6 +80,8 @@ async fn handle_transmission(
         }
         TransmissionType::GetEmoji(_) => todo!(),
         TransmissionType::GetAttachment(_) => todo!(),
+        TransmissionType::CreateCommunity(_) => todo!(),
+        TransmissionType::CreateRoom(_, _) => todo!(),
 
         //-----------------------------invalid types from client------------------------------------
         TransmissionType::InvalidTransmission
@@ -178,72 +98,6 @@ async fn handle_transmission(
         | TransmissionType::UserEvent(_) => {
             let _ = Transmission::invalid().send(stream).await;
         }
-    }
-}
-
-async fn fetch_new_events(
-    props: &mut ConnectionProps,
-    conn: &DbConn,
-    stream: &mut ws::stream::DuplexStream,
-) {
-    if props.listening_channel.is_none() || props.listening_server.is_none() {
-        return;
-    }
-
-    if props.last_sent_timestamp.is_none() {
-        handle_get_channel(
-            props.listening_server.unwrap(),
-            props.listening_channel.unwrap(),
-            props,
-            conn,
-            stream,
-        )
-        .await;
-        return;
-    }
-
-    let x = props.last_sent_timestamp.unwrap();
-
-    let since = conn
-        .get_events_since_timestamp_and_id(
-            props.listening_channel.unwrap(),
-            x,
-            props.last_sent_id.unwrap(),
-            10,
-        )
-        .await;
-
-    match since {
-        Ok(since) => {
-            let newlast = since.get(since.len().wrapping_sub(1));
-            match newlast {
-                Some(y) => {
-                    if y.id == props.last_sent_id {
-                        return;
-                    }
-                    println!("newlast id: ");
-                    dbg!(y.id);
-
-                    props.last_sent_timestamp = Some(y.timestamp);
-                    props.last_sent_id = Some(y.id.unwrap());
-                    // let messages = since.into_iter().filter(ChannelEvent::is_message).map(|y| y.get_message(conn));
-                    // let messages = futures::future::join_all(messages).await;
-                    let messages = since
-                        .into_iter()
-                        .filter(ChannelEvent::is_message)
-                        .map(|y| y.get_concrete_unwrap(conn));
-                    let messages = futures::future::join_all(messages).await;
-                    let _ = TransmissionType::ChannelEvent(messages)
-                        .wrap_into_transmission()
-                        .send(stream)
-                        .await;
-                }
-                None => {
-                    // println!("no new messages")
-                }
-            }
-        }
-        Err(e) => println!("no new messages or db errr {}", e),
     }
 }
 
