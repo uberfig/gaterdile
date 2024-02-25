@@ -1,6 +1,6 @@
 use crate::{
     db::{DbConn, User},
-    db_types::{Channel, ChannelEvent, Message, ServerMember},
+    db_types::{Room, RoomEvent, Message, ServerMember},
     transmission::{
         AuthErr, InsertError, NewTransmissionMessage, ServerInfoData, Transmission,
         TransmissionType, UserAuth,
@@ -40,6 +40,16 @@ pub async fn fetch_new_events(
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
+    //----------------get user events----------------
+
+    
+
+    //--------------get community events-------------
+
+
+
+    //----------------get room events----------------
+
     if props.listening_channel.is_none() || props.listening_server.is_none() {
         return;
     }
@@ -83,7 +93,7 @@ pub async fn fetch_new_events(
 
                     let messages = since
                         .into_iter()
-                        .filter(ChannelEvent::is_message)
+                        .filter(RoomEvent::is_message)
                         .map(|y| y.get_concrete_unwrap(conn));
                     let messages = futures::future::join_all(messages).await;
                     let _ = TransmissionType::ChannelEvent(messages)
@@ -200,7 +210,7 @@ pub async fn handle_get_channel(
         }
         let messages = x
             .into_iter()
-            .filter(ChannelEvent::is_message)
+            .filter(RoomEvent::is_message)
             .map(|y| y.get_concrete_unwrap(conn));
         let messages = futures::future::join_all(messages).await;
 
@@ -243,7 +253,7 @@ pub async fn handle_get_prior(
         } else {
             let messages = x
                 .into_iter()
-                .filter(ChannelEvent::is_message)
+                .filter(RoomEvent::is_message)
                 .map(|y| y.get_concrete_unwrap(conn));
             let messages = futures::future::join_all(messages).await;
             let _ = TransmissionType::PriorMessages(messages)
@@ -272,7 +282,7 @@ pub async fn handle_get_server(
         channels: channels
             .unwrap_or_default()
             .into_iter()
-            .map(Channel::into)
+            .map(Room::into)
             .collect(),
     };
 

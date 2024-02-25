@@ -1,5 +1,5 @@
 use crate::{
-    db_types::{Channel, ChannelEvent, ChannelEventType, Message, ServerMember},
+    db_types::{Room, RoomEvent, RoomEventType, Message, ServerMember},
     schema::db_schema::{self, channel_events, channels, server_members},
     transmission::{AuthErr, InsertError, JoinServerResult, UserAuth},
 };
@@ -159,7 +159,7 @@ impl DbConn {
                         channel_id,
                         server_id,
                         timestamp,
-                        ChannelEventType::NewMessage(x.id.unwrap()),
+                        RoomEventType::NewMessage(x.id.unwrap()),
                     )
                     .await;
                 dbg!(&y);
@@ -219,11 +219,11 @@ impl DbConn {
     pub async fn get_server_channels(
         &self,
         server_id: i64,
-    ) -> Result<Vec<Channel>, diesel::result::Error> {
+    ) -> Result<Vec<Room>, diesel::result::Error> {
         self.run(move |conn| {
             channels::dsl::channels
                 .filter(channels::dsl::server.eq(server_id))
-                .load::<Channel>(conn)
+                .load::<Room>(conn)
         })
         .await
     }
@@ -261,7 +261,7 @@ impl DbConn {
         channel_id: i64,
         server_id: i64,
         timestamp: i64,
-        event_type: ChannelEventType,
+        event_type: RoomEventType,
     ) -> Result<usize, diesel::result::Error> {
         let event = event_type.to_event(channel_id, server_id, timestamp);
 
@@ -279,7 +279,7 @@ impl DbConn {
         since: i64,
         id: i64,
         amount: i64,
-    ) -> Result<Vec<ChannelEvent>, diesel::result::Error> {
+    ) -> Result<Vec<RoomEvent>, diesel::result::Error> {
         let mut a = self
             .run(move |conn| {
                 channel_events::dsl::channel_events
@@ -288,7 +288,7 @@ impl DbConn {
                     .order(channel_events::dsl::timestamp.desc())
                     .limit(amount)
                     .filter(channel_events::dsl::id.ne(id))
-                    .load::<ChannelEvent>(conn)
+                    .load::<RoomEvent>(conn)
             })
             .await;
 
@@ -309,7 +309,7 @@ impl DbConn {
         prior_to: i64,
         last_msg: i64,
         amount: i64,
-    ) -> Result<Vec<ChannelEvent>, Error> {
+    ) -> Result<Vec<RoomEvent>, Error> {
         let mut val = self
             .run(move |conn| {
                 channel_events::dsl::channel_events
@@ -321,7 +321,7 @@ impl DbConn {
                     .limit(amount)
                     // .order(messages::dsl::id.desc())
                     // .order(messages::dsl::timestamp.asc())
-                    .load::<ChannelEvent>(conn)
+                    .load::<RoomEvent>(conn)
                 // .order(messages::dsl::timestamp.asc())
             })
             .await;
@@ -341,7 +341,7 @@ impl DbConn {
         // server_id: i32,
         channel_id: i64,
         amount: i64,
-    ) -> Result<Vec<ChannelEvent>, Error> {
+    ) -> Result<Vec<RoomEvent>, Error> {
         let mut val = self
             .run(move |conn| {
                 channel_events::dsl::channel_events
@@ -351,7 +351,7 @@ impl DbConn {
                     .limit(amount)
                     // .order(messages::dsl::id.desc())
                     // .order(messages::dsl::timestamp.asc())
-                    .load::<ChannelEvent>(conn)
+                    .load::<RoomEvent>(conn)
                 // .order(messages::dsl::timestamp.asc())
             })
             .await;

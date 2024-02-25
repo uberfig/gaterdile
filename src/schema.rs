@@ -12,6 +12,7 @@ pub mod db_schema {
             id -> Nullable<BigSerial>,
             nickname -> Text,
             owner -> BigInt,
+            is_public -> Bool,
         }
     }
     table! {
@@ -93,6 +94,7 @@ pub mod db_schema {
             timestamp -> BigInt,
             event_type -> Integer,
             creator -> Nullable<BigSerial>,
+            channel -> Nullable<BigSerial>,
             deleted -> Nullable<BigSerial>,
         }
     }

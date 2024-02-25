@@ -8,7 +8,8 @@ CREATE TABLE users (
 CREATE TABLE servers (
 	id			BIGSERIAL PRIMARY KEY NOT NULL,
 	nickname	TEXT,
-	owner		BIGINT NOT NULL REFERENCES users(id)
+	owner		BIGINT NOT NULL REFERENCES users(id),
+	is_public	BOOLEAN NOT NULL
 );
 
 CREATE TABLE channels (
@@ -68,6 +69,7 @@ CREATE TABLE server_events (
 	timestamp		BIGINT NOT NULL,
 	event_type		INTEGER NOT NULL,
 	creator			BIGINT REFERENCES users(id) ON DELETE CASCADE,
+	channel			BIGINT REFERENCES channels(id) ON DELETE CASCADE,
 	deleted			BIGINT
 );
 

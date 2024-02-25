@@ -117,15 +117,24 @@ impl From<ServerMember> for TransmissionServerMember {
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
+#[diesel(table_name = db_schema::servers)]
+pub struct Community {
+    id: Option<i64>,
+    nickname: String,
+    owner: i64,
+    is_public: bool,
+}
+
+#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
 #[diesel(table_name = db_schema::channels)]
-pub struct Channel {
+pub struct Room {
     pub id: Option<i64>,
     pub server: i64,
     pub name: String,
 }
 
-impl From<Channel> for TransmissionChannel {
-    fn from(value: Channel) -> Self {
+impl From<Room> for TransmissionChannel {
+    fn from(value: Room) -> Self {
         TransmissionChannel {
             id: value.id,
             server: value.server,
@@ -134,7 +143,7 @@ impl From<Channel> for TransmissionChannel {
     }
 }
 
-impl Channel {
+impl Room {
     pub fn to_transmission(self) -> TransmissionChannel {
         TransmissionChannel {
             id: self.id,
@@ -146,7 +155,7 @@ impl Channel {
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
 #[diesel(table_name = db_schema::channel_events)]
-pub struct ChannelEvent {
+pub struct RoomEvent {
     pub id: Option<i64>,
     pub channel_id: i64,
     pub server_id: i64,
@@ -158,7 +167,7 @@ pub struct ChannelEvent {
     pub deleted: Option<i64>, //used for the id of deleted content
 }
 
-pub enum ChannelEventType {
+pub enum RoomEventType {
     NewMessage(i64),
     MessageDeleted(i64),
     NewReaction(i64),
@@ -168,16 +177,16 @@ pub enum ChannelEventType {
     Error,
 }
 
-impl ChannelEvent {
-    fn to_event_type(&self) -> ChannelEventType {
+impl RoomEvent {
+    fn to_event_type(&self) -> RoomEventType {
         match self.event_type {
-            0 => ChannelEventType::NewMessage(self.message.unwrap()),
-            1 => ChannelEventType::MessageDeleted(self.deleted.unwrap()),
-            2 => ChannelEventType::NewReaction(self.reaction.unwrap()),
-            3 => ChannelEventType::DeleteReaction(self.deleted.unwrap()),
-            4 => ChannelEventType::UserJoin(self.creator.unwrap()),
-            5 => ChannelEventType::UserLeave(self.creator.unwrap()),
-            _ => ChannelEventType::Error,
+            0 => RoomEventType::NewMessage(self.message.unwrap()),
+            1 => RoomEventType::MessageDeleted(self.deleted.unwrap()),
+            2 => RoomEventType::NewReaction(self.reaction.unwrap()),
+            3 => RoomEventType::DeleteReaction(self.deleted.unwrap()),
+            4 => RoomEventType::UserJoin(self.creator.unwrap()),
+            5 => RoomEventType::UserLeave(self.creator.unwrap()),
+            _ => RoomEventType::Error,
         }
     }
     pub fn is_message(&self) -> bool {
@@ -194,7 +203,7 @@ impl ChannelEvent {
     pub async fn get_concrete(self, conn: &DbConn) -> Result<transmission::ChannelEvent, Error> {
         let evt_type = self.to_event_type();
         match evt_type {
-            ChannelEventType::NewMessage(x) => {
+            RoomEventType::NewMessage(x) => {
                 let msg = conn.get_msg_by_id(x).await;
                 match msg {
                     Ok(y) => {
@@ -209,12 +218,12 @@ impl ChannelEvent {
                     Err(y) => Err(y),
                 }
             }
-            ChannelEventType::MessageDeleted(_) => todo!(),
-            ChannelEventType::NewReaction(_) => todo!(),
-            ChannelEventType::DeleteReaction(_) => todo!(),
-            ChannelEventType::UserJoin(_) => todo!(),
-            ChannelEventType::UserLeave(_) => todo!(),
-            ChannelEventType::Error => todo!(),
+            RoomEventType::MessageDeleted(_) => todo!(),
+            RoomEventType::NewReaction(_) => todo!(),
+            RoomEventType::DeleteReaction(_) => todo!(),
+            RoomEventType::UserJoin(_) => todo!(),
+            RoomEventType::UserLeave(_) => todo!(),
+            RoomEventType::Error => todo!(),
         }
     }
     pub async fn get_concrete_unwrap(self, conn: &DbConn) -> transmission::ChannelEvent {
@@ -222,21 +231,21 @@ impl ChannelEvent {
     }
 }
 
-impl ChannelEventType {
+impl RoomEventType {
     fn to_int(&self) -> i32 {
         match self {
-            ChannelEventType::NewMessage(_) => 0,
-            ChannelEventType::MessageDeleted(_) => 1,
-            ChannelEventType::NewReaction(_) => 2,
-            ChannelEventType::DeleteReaction(_) => 3,
-            ChannelEventType::UserJoin(_) => 4,
-            ChannelEventType::UserLeave(_) => 5,
-            ChannelEventType::Error => -1,
+            RoomEventType::NewMessage(_) => 0,
+            RoomEventType::MessageDeleted(_) => 1,
+            RoomEventType::NewReaction(_) => 2,
+            RoomEventType::DeleteReaction(_) => 3,
+            RoomEventType::UserJoin(_) => 4,
+            RoomEventType::UserLeave(_) => 5,
+            RoomEventType::Error => -1,
         }
     }
-    pub fn to_event(&self, channel_id: i64, server_id: i64, timestamp: i64) -> ChannelEvent {
+    pub fn to_event(&self, channel_id: i64, server_id: i64, timestamp: i64) -> RoomEvent {
         match self {
-            ChannelEventType::NewMessage(x) => ChannelEvent {
+            RoomEventType::NewMessage(x) => RoomEvent {
                 id: None,
                 channel_id,
                 server_id,
@@ -247,7 +256,7 @@ impl ChannelEventType {
                 creator: None,
                 deleted: None,
             },
-            ChannelEventType::MessageDeleted(x) => ChannelEvent {
+            RoomEventType::MessageDeleted(x) => RoomEvent {
                 id: None,
                 channel_id,
                 server_id,
@@ -258,7 +267,7 @@ impl ChannelEventType {
                 creator: None,
                 deleted: Some(*x),
             },
-            ChannelEventType::NewReaction(x) => ChannelEvent {
+            RoomEventType::NewReaction(x) => RoomEvent {
                 id: None,
                 channel_id,
                 server_id,
@@ -269,7 +278,7 @@ impl ChannelEventType {
                 creator: None,
                 deleted: None,
             },
-            ChannelEventType::DeleteReaction(x) => ChannelEvent {
+            RoomEventType::DeleteReaction(x) => RoomEvent {
                 id: None,
                 channel_id,
                 server_id,
@@ -280,7 +289,7 @@ impl ChannelEventType {
                 creator: None,
                 deleted: Some(*x),
             },
-            ChannelEventType::UserJoin(x) => ChannelEvent {
+            RoomEventType::UserJoin(x) => RoomEvent {
                 id: None,
                 channel_id,
                 server_id,
@@ -291,7 +300,7 @@ impl ChannelEventType {
                 creator: Some(*x),
                 deleted: None,
             },
-            ChannelEventType::UserLeave(x) => ChannelEvent {
+            RoomEventType::UserLeave(x) => RoomEvent {
                 id: None,
                 channel_id,
                 server_id,
@@ -302,7 +311,7 @@ impl ChannelEventType {
                 creator: Some(*x),
                 deleted: None,
             },
-            ChannelEventType::Error => ChannelEvent {
+            RoomEventType::Error => RoomEvent {
                 id: None,
                 channel_id,
                 server_id,
@@ -317,10 +326,3 @@ impl ChannelEventType {
     }
 }
 
-#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = db_schema::servers)]
-pub struct Community {
-    id: Option<i64>,
-    nickname: String,
-    owner: i64,
-}
