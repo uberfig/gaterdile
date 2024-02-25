@@ -14,6 +14,21 @@ class JoinCommunity {
 	}
 }
 
+class CreateCommunity {
+	CreateCommunity;
+	constructor(name) {
+		this.CreateCommunity = name;
+	}
+}
+
+class CreateRoom {
+	CreateRoom = [];
+	constructor(id, name) {
+		this.CreateRoom.push(id);
+		this.CreateRoom.push(name);
+	}
+}
+
 class GetChannelTransmit {
 	GetRoom = [];
 	constructor(server, channel) {

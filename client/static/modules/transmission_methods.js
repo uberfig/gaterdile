@@ -3,8 +3,18 @@ async function get_room(serverConn, server, channel) {
 	serverConn.send(JSON.stringify(val));
 }
 
+async function create_room(serverConn, server, name) {
+	const val = new Transmission("GetChannel", new CreateRoom(server, name));
+	serverConn.send(JSON.stringify(val));
+}
+
 async function join_community(serverConn, server) {
 	const val = new Transmission("JoinServer", new JoinCommunity(server));
+	serverConn.send(JSON.stringify(val));
+}
+
+async function create_community(serverConn, name) {
+	const val = new Transmission("CreateCommunity", new CreateCommunity(name));
 	serverConn.send(JSON.stringify(val));
 }
 

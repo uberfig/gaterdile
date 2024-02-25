@@ -118,8 +118,9 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
 
 			tokio::spawn(async move {
 				let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
+				// let _ = Transmission { data: TransmissionType::CreateRoom(1, "test".to_string()), transmission_type: TransmissionType::CreateRoom(1, "test".to_string()).to_string() }.send(&mut stream).await;
 
-                let _ = TransmissionType::JoinCommunity(0).wrap_into_transmission().send(&mut stream).await;
+                // let _ = TransmissionType::JoinCommunity(0).wrap_into_transmission().send(&mut stream).await;
 				loop {
 					tokio::select! {
 						_ = interval.tick() => {
