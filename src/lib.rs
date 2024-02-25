@@ -7,6 +7,7 @@ extern crate diesel;
 extern crate rocket_sync_db_pools;
 
 pub mod db;
+pub mod db_event_types;
 pub mod db_types;
 pub mod handlers;
 pub mod schema;

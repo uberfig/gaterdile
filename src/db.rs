@@ -1,5 +1,6 @@
 use crate::{
-    db_types::{Room, RoomEvent, RoomEventType, Message, ServerMember},
+    db_event_types::{RoomEvent, RoomEventType},
+    db_types::{Message, Room, ServerMember},
     schema::db_schema::{self, channel_events, channels, server_members},
     transmission::{AuthErr, InsertError, JoinServerResult, UserAuth},
 };

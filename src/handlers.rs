@@ -1,6 +1,7 @@
 use crate::{
     db::{DbConn, User},
-    db_types::{Room, RoomEvent, Message, ServerMember},
+    db_event_types::RoomEvent,
+    db_types::{Message, Room, ServerMember},
     transmission::{
         AuthErr, InsertError, NewTransmissionMessage, ServerInfoData, Transmission,
         TransmissionType, UserAuth,
@@ -42,11 +43,7 @@ pub async fn fetch_new_events(
 ) {
     //----------------get user events----------------
 
-    
-
     //--------------get community events-------------
-
-
 
     //----------------get room events----------------
 

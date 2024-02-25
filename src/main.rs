@@ -67,7 +67,7 @@ async fn handle_transmission(
         //------------community management----------
         TransmissionType::CreateCommunity(_) => {
             todo!()
-        },
+        }
         TransmissionType::JoinCommunity(server_id) => {
             handle_join_server(server_id, props.uid, conn, stream).await;
         }
@@ -81,7 +81,7 @@ async fn handle_transmission(
         TransmissionType::GetRoom(server_id, channel_id) => {
             handle_get_channel(server_id, channel_id, props, conn, stream).await;
         }
-        
+
         TransmissionType::GetPriorMessages(since) => {
             handle_get_prior(props.listening_channel.unwrap_or(-1), conn, stream, since).await
         }
