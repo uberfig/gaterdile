@@ -136,7 +136,10 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
 									println!("Received Text message: {}", text);
 									let data = Transmission::parse(&text).unwrap_or(Transmission { data: TransmissionType::InvalidTransmission, transmission_type: "".to_string() });
 
-									handle_transmission(data.data, &mut props, &conn, &mut stream).await;
+                                    if props.authenticated || matches!(data.data, TransmissionType::Auth(..) | TransmissionType::CreateUser(..)) {
+                                        handle_transmission(data.data, &mut props, &conn, &mut stream).await;
+                                    }
+									
 								}
 								ws::Message::Binary(data) => {
 									// Handle Binary message
