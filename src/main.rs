@@ -138,6 +138,8 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
 
                                     if props.authenticated || matches!(data.data, TransmissionType::Auth(..) | TransmissionType::CreateUser(..)) {
                                         handle_transmission(data.data, &mut props, &conn, &mut stream).await;
+                                    } else {
+                                        let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
                                     }
 									
 								}

@@ -2,11 +2,9 @@ use crate::{
     db::DbConn,
     schema::db_schema,
     transmission::{
-        self, NewTransmissionMessage, TransmissionChannel, TransmissionMessage,
-        TransmissionServerMember,
+        NewTransmissionMessage, TransmissionChannel, TransmissionMessage, TransmissionServerMember,
     },
 };
-use diesel::result::Error;
 use serde::{Deserialize, Serialize};
 
 #[derive(
@@ -23,9 +21,7 @@ use serde::{Deserialize, Serialize};
 )]
 #[diesel(primary_key(id))]
 #[diesel(table_name = db_schema::messages)]
-// #[diesel(check_for_backend(diesel::post))]
 pub struct Message {
-    // #[diesel(deserialize_as = "i64")]
     #[diesel(deserialize_as = Option<i64>)]
     pub id: Option<i64>,
     pub sender: i64,
@@ -34,7 +30,6 @@ pub struct Message {
     pub reply: Option<i64>,
     pub is_reply: bool,
     pub text: String,
-    // pub emoji: Option<Vec<u8>>,
     pub timestamp: i64,
 }
 

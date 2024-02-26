@@ -138,18 +138,7 @@ impl RoomEventType {
                 creator: None,
                 deleted: Some(*x),
             },
-            RoomEventType::UserJoin(x) => RoomEvent {
-                id: None,
-                channel_id,
-                server_id,
-                timestamp,
-                event_type: self.to_int(),
-                message: None,
-                reaction: None,
-                creator: Some(*x),
-                deleted: None,
-            },
-            RoomEventType::UserLeave(x) => RoomEvent {
+            RoomEventType::UserJoin(x) | RoomEventType::UserLeave(x) => RoomEvent {
                 id: None,
                 channel_id,
                 server_id,
