@@ -141,7 +141,6 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
                                     } else {
                                         let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
                                     }
-									
 								}
 								ws::Message::Binary(data) => {
 									// Handle Binary message

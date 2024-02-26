@@ -267,7 +267,7 @@ pub async fn handle_get_server(
     stream: &mut ws::stream::DuplexStream,
 ) {
     let members_fut = conn.get_server_members(server_id);
-    let channels_fut = conn.get_server_channels(server_id);
+    let channels_fut = conn.get_community_rooms(server_id);
     let (members, channels) = join!(members_fut, channels_fut);
     let members = members
         .unwrap_or(vec![])
@@ -295,7 +295,7 @@ pub async fn handle_join_server(
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let a = conn.join_server(server_id, userid, None).await;
+    let a = conn.join_community(server_id, userid, None).await;
     let _ = TransmissionType::JoinServerResult(a)
         .wrap_into_transmission()
         .send(stream)

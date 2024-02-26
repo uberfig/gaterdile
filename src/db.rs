@@ -205,7 +205,7 @@ impl DbConn {
     }
 
     //gets all servers a user is a part of
-    pub async fn get_user_servers(
+    pub async fn get_user_communities(
         &self,
         uid: i64,
     ) -> Result<Vec<ServerMember>, diesel::result::Error> {
@@ -217,7 +217,7 @@ impl DbConn {
         .await
     }
 
-    pub async fn get_server_channels(
+    pub async fn get_community_rooms(
         &self,
         server_id: i64,
     ) -> Result<Vec<Room>, diesel::result::Error> {
@@ -229,7 +229,7 @@ impl DbConn {
         .await
     }
 
-    pub async fn join_server(
+    pub async fn join_community(
         &self,
         server_id: i64,
         userid: i64,
