@@ -303,20 +303,22 @@ hr {
     bottom: 0;
 
     vertical-align: bottom;
+
+    button {
+        height: min-content;
+        border: none;
+        border-radius: 100%;
+        aspect-ratio: 1;
+        background-color: #212225;
+        padding: 5px;
+    }
+    
+    button:hover {
+        background-color: #33353a;
+    }
 }
 
-.inputbutton {
-    height: min-content;
-    border: none;
-    border-radius: 100%;
-    aspect-ratio: 1;
-    background-color: #212225;
-    padding: 5px;
-}
 
-.inputbutton:hover {
-    background-color: #33353a;
-}
 
 .send {
     /* background-color: #12704c; */
