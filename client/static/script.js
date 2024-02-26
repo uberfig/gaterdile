@@ -125,6 +125,7 @@ function create_message_element(message) {
 	//corner-up-left
 
 	const reply_butt = document.createElement("button");
+	reply_butt.classList.add("hovermenu_button");
 	const reply_icon = feather.icons["corner-up-left"].toSvg({ 'stroke-width': 2, 'color': '#ffffff' });
 	reply_butt.insertAdjacentHTML("afterbegin", reply_icon);
 	menu_items.appendChild(reply_butt);
@@ -132,11 +133,13 @@ function create_message_element(message) {
 
 	const reaction_butt = document.createElement("button");
 	reaction_butt.classList.add("reaction_button");
+	reaction_butt.classList.add("hovermenu_button");
 	const emoji_icon = feather.icons.smile.toSvg({ 'stroke-width': 2, 'color': '#ffffff' });
 	reaction_butt.insertAdjacentHTML("afterbegin", emoji_icon);
 	menu_items.appendChild(reaction_butt);
 
 	const more_butt = document.createElement("button");
+	more_butt.classList.add("hovermenu_button");
 	const more_icon = feather.icons["more-horizontal"].toSvg({ 'stroke-width': 2, 'color': '#ffffff' });
 	more_butt.insertAdjacentHTML("afterbegin", more_icon);
 	menu_items.appendChild(more_butt);

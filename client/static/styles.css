@@ -258,32 +258,32 @@ hr {
 
 .hovermenu {
     height: 0%;
+}
 
-    .menu_items {
-        border: solid;
-        border-width: 2px;
-        background-color: var(--hovermenu_bg_color);
-        border-color: var(--accent_dark);
-        border-radius: 10px;
-        overflow: hidden;
+.hovermenu_button {
+    background-color: var(--hovermenu_bg_color);
+    border: none;
+}
 
-        margin-top: -1em;
-        position: relative;
-        float: right;
-    }
+.hovermenu_button:hover {
+    background-color: var(--hovermenu_bg_hover_color);
+}
 
-    button {
-        background-color: var(--hovermenu_bg_color);
-        border: none;
-    }
+.menu_items {
+    border: solid;
+    border-width: 2px;
+    background-color: var(--hovermenu_bg_color);
+    border-color: var(--accent_dark);
+    border-radius: 10px;
+    overflow: hidden;
 
-    button:hover {
-        background-color: var(--hovermenu_bg_hover_color);
-    }
+    margin-top: -1em;
+    position: relative;
+    float: right;
+}
 
-    .reaction_button {
-        padding: 1px;
-    }
+.reaction_button {
+    padding: 1px;
 }
 
 .input {
@@ -303,29 +303,29 @@ hr {
     bottom: 0;
 
     vertical-align: bottom;
+}
 
-    button {
-        height: min-content;
-        border: none;
-        border-radius: 100%;
-        aspect-ratio: 1;
-        background-color: #212225;
-        padding: 5px;
-    }
+.inputbutton {
+    height: min-content;
+    border: none;
+    border-radius: 100%;
+    aspect-ratio: 1;
+    background-color: #212225;
+    padding: 5px;
+}
 
-    button:hover {
-        background-color: #33353a;
-    }
+.inputbutton:hover {
+    background-color: #33353a;
+}
 
-    .send {
-        /* background-color: #12704c; */
-        background-color: var(--accent_very_dark);
-    }
+.send {
+    /* background-color: #12704c; */
+    background-color: var(--accent_very_dark) !important;
+}
 
-    .send:hover {
-        /* background-color: #149262; */
-        background-color: var(--accent_dark);
-    }
+.send:hover {
+    /* background-color: #149262; */
+    background-color: var(--accent_dark) !important;
 }
 
 .input_container {
