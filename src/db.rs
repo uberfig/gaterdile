@@ -1,7 +1,7 @@
 use crate::{
     db_event_types::{RoomEvent, RoomEventType},
     db_types::{Message, Room, ServerMember},
-    schema::db_schema::{self, room_events, rooms, community_members},
+    schema::db_schema::{self, community_members, room_events, rooms},
     transmission::{AuthErr, InsertError, JoinServerResult, UserAuth},
 };
 use argon2::{

@@ -25,6 +25,21 @@ pub enum RoomEventType {
     UserLeave(i64),
     Error,
 }
+impl Default for RoomEvent {
+    fn default() -> Self {
+        RoomEvent {
+            id: None,
+            channel_id: -1,
+            server_id: -1,
+            timestamp: -1,
+            event_type: -1,
+            message: None,
+            reaction: None,
+            creator: None,
+            deleted: None,
+        }
+    }
+}
 
 impl RoomEvent {
     fn to_event_type(&self) -> RoomEventType {
@@ -95,70 +110,51 @@ impl RoomEventType {
     pub fn to_event(&self, channel_id: i64, server_id: i64, timestamp: i64) -> RoomEvent {
         match self {
             RoomEventType::NewMessage(x) => RoomEvent {
-                id: None,
                 channel_id,
                 server_id,
                 timestamp,
                 event_type: self.to_int(),
                 message: Some(*x),
-                reaction: None,
-                creator: None,
-                deleted: None,
+                ..Default::default()
             },
             RoomEventType::MessageDeleted(x) => RoomEvent {
-                id: None,
                 channel_id,
                 server_id,
                 timestamp,
                 event_type: self.to_int(),
-                message: None,
-                reaction: None,
-                creator: None,
                 deleted: Some(*x),
+                ..Default::default()
             },
             RoomEventType::NewReaction(x) => RoomEvent {
-                id: None,
                 channel_id,
                 server_id,
                 timestamp,
                 event_type: self.to_int(),
-                message: None,
                 reaction: Some(*x),
-                creator: None,
-                deleted: None,
+                ..Default::default()
             },
             RoomEventType::DeleteReaction(x) => RoomEvent {
-                id: None,
                 channel_id,
                 server_id,
                 timestamp,
                 event_type: self.to_int(),
-                message: None,
-                reaction: None,
-                creator: None,
                 deleted: Some(*x),
+                ..Default::default()
             },
             RoomEventType::UserJoin(x) | RoomEventType::UserLeave(x) => RoomEvent {
-                id: None,
                 channel_id,
                 server_id,
                 timestamp,
                 event_type: self.to_int(),
-                message: None,
-                reaction: None,
                 creator: Some(*x),
-                deleted: None,
+                ..Default::default()
             },
             RoomEventType::Error => RoomEvent {
-                id: None,
                 channel_id,
                 server_id,
                 timestamp,
                 event_type: self.to_int(),
-                message: None,
-                reaction: None,
-                creator: None,
-                deleted: None,
+                ..Default::default()
             },
         }
     }
