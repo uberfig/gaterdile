@@ -5,16 +5,16 @@ CREATE TABLE users (
 	password	TEXT
 );
 
-CREATE TABLE servers (
+CREATE TABLE communities (
 	id			BIGSERIAL PRIMARY KEY NOT NULL,
 	nickname	TEXT,
 	owner		BIGINT NOT NULL REFERENCES users(id),
 	is_public	BOOLEAN NOT NULL
 );
 
-CREATE TABLE channels (
+CREATE TABLE rooms (
 	id			BIGSERIAL PRIMARY KEY NOT NULL,
-	server		BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+	server		BIGINT NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
 	name		TEXT
 );
 
@@ -22,7 +22,7 @@ CREATE TABLE attachments (
 	id			BIGSERIAL PRIMARY KEY NOT NULL,
 	name		TEXT,
 	owner		BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-	server		BIGINT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+	server		BIGINT NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
 	content		bytea
 );
 
@@ -44,14 +44,14 @@ CREATE TABLE reactions (
 	emoji		INTEGER NOT NULL
 );
 
-CREATE TABLE server_members (
+CREATE TABLE community_members (
 	server_id	BIGINT NOT NULL,
 	userid		BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 	nickname	TEXT,
 	PRIMARY KEY(server_id, userid)
 );
 
-CREATE TABLE channel_events (
+CREATE TABLE room_events (
 	id				BIGSERIAL PRIMARY KEY NOT NULL,
 	channel_id		BIGINT NOT NULL,
 	server_id		BIGINT NOT NULL,
@@ -63,13 +63,13 @@ CREATE TABLE channel_events (
 	deleted			BIGINT
 );
 
-CREATE TABLE server_events (
+CREATE TABLE community_events (
 	id				BIGSERIAL PRIMARY KEY NOT NULL,
 	server_id		BIGINT NOT NULL,
 	timestamp		BIGINT NOT NULL,
 	event_type		INTEGER NOT NULL,
 	creator			BIGINT REFERENCES users(id) ON DELETE CASCADE,
-	channel			BIGINT REFERENCES channels(id) ON DELETE CASCADE,
+	channel			BIGINT REFERENCES rooms(id) ON DELETE CASCADE,
 	deleted			BIGINT
 );
 
@@ -78,7 +78,7 @@ CREATE TABLE user_events (
 	user_id			BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 	timestamp		BIGINT NOT NULL,
 	event_type		INTEGER NOT NULL,
-	community		BIGINT REFERENCES servers(id) ON DELETE CASCADE,
+	community		BIGINT REFERENCES communities(id) ON DELETE CASCADE,
 	deleted			BIGINT
 );
 

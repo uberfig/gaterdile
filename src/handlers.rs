@@ -43,6 +43,8 @@ pub async fn fetch_new_events(
 ) {
     //----------------get user events----------------
 
+
+
     //--------------get community events-------------
 
     //----------------get room events----------------
@@ -266,7 +268,7 @@ pub async fn handle_get_server(
     conn: &DbConn,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let members_fut = conn.get_server_members(server_id);
+    let members_fut = conn.get_community_members(server_id);
     let channels_fut = conn.get_community_rooms(server_id);
     let (members, channels) = join!(members_fut, channels_fut);
     let members = members

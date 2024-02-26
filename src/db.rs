@@ -1,7 +1,7 @@
 use crate::{
     db_event_types::{RoomEvent, RoomEventType},
     db_types::{Message, Room, ServerMember},
-    schema::db_schema::{self, channel_events, channels, server_members},
+    schema::db_schema::{self, room_events, rooms, community_members},
     transmission::{AuthErr, InsertError, JoinServerResult, UserAuth},
 };
 use argon2::{
@@ -174,14 +174,14 @@ impl DbConn {
         // return Ok(1);
     }
 
-    pub async fn get_server_members(
+    pub async fn get_community_members(
         &self,
         server_id: i64,
     ) -> Result<Vec<ServerMember>, diesel::result::Error> {
         let mut val = self
             .run(move |conn| {
-                server_members::dsl::server_members
-                    .filter(server_members::dsl::server_id.eq(server_id))
+                community_members::dsl::community_members
+                    .filter(community_members::dsl::server_id.eq(server_id))
                     .load::<ServerMember>(conn)
             })
             .await;
@@ -210,8 +210,8 @@ impl DbConn {
         uid: i64,
     ) -> Result<Vec<ServerMember>, diesel::result::Error> {
         self.run(move |conn| {
-            server_members::dsl::server_members
-                .filter(server_members::dsl::userid.eq(uid))
+            community_members::dsl::community_members
+                .filter(community_members::dsl::userid.eq(uid))
                 .load::<ServerMember>(conn)
         })
         .await
@@ -222,8 +222,8 @@ impl DbConn {
         server_id: i64,
     ) -> Result<Vec<Room>, diesel::result::Error> {
         self.run(move |conn| {
-            channels::dsl::channels
-                .filter(channels::dsl::server.eq(server_id))
+            rooms::dsl::rooms
+                .filter(rooms::dsl::server.eq(server_id))
                 .load::<Room>(conn)
         })
         .await
@@ -242,7 +242,7 @@ impl DbConn {
         };
         let e = self
             .run(move |c| {
-                diesel::insert_into(db_schema::server_members::table)
+                diesel::insert_into(db_schema::community_members::table)
                     .values(message)
                     .execute(c)
             })
@@ -267,7 +267,7 @@ impl DbConn {
         let event = event_type.to_event(channel_id, server_id, timestamp);
 
         self.run(move |c| {
-            diesel::insert_into(db_schema::channel_events::table)
+            diesel::insert_into(db_schema::room_events::table)
                 .values(event)
                 .execute(c)
         })
@@ -283,12 +283,12 @@ impl DbConn {
     ) -> Result<Vec<RoomEvent>, diesel::result::Error> {
         let mut a = self
             .run(move |conn| {
-                channel_events::dsl::channel_events
-                    .filter(channel_events::dsl::channel_id.eq(channel_id))
-                    .filter(channel_events::dsl::timestamp.ge(since))
-                    .order(channel_events::dsl::timestamp.desc())
+                room_events::dsl::room_events
+                    .filter(room_events::dsl::channel_id.eq(channel_id))
+                    .filter(room_events::dsl::timestamp.ge(since))
+                    .order(room_events::dsl::timestamp.desc())
                     .limit(amount)
-                    .filter(channel_events::dsl::id.ne(id))
+                    .filter(room_events::dsl::id.ne(id))
                     .load::<RoomEvent>(conn)
             })
             .await;
@@ -313,12 +313,12 @@ impl DbConn {
     ) -> Result<Vec<RoomEvent>, Error> {
         let mut val = self
             .run(move |conn| {
-                channel_events::dsl::channel_events
+                room_events::dsl::room_events
                     // .filter(messages::dsl::server.eq(server_id))
-                    .filter(channel_events::dsl::channel_id.eq(channel_id))
-                    .filter(channel_events::dsl::timestamp.le(prior_to))
-                    .filter(channel_events::dsl::id.ne(last_msg))
-                    .order(channel_events::dsl::timestamp.asc())
+                    .filter(room_events::dsl::channel_id.eq(channel_id))
+                    .filter(room_events::dsl::timestamp.le(prior_to))
+                    .filter(room_events::dsl::id.ne(last_msg))
+                    .order(room_events::dsl::timestamp.asc())
                     .limit(amount)
                     // .order(messages::dsl::id.desc())
                     // .order(messages::dsl::timestamp.asc())
@@ -345,10 +345,10 @@ impl DbConn {
     ) -> Result<Vec<RoomEvent>, Error> {
         let mut val = self
             .run(move |conn| {
-                channel_events::dsl::channel_events
+                room_events::dsl::room_events
                     // .filter(messages::dsl::server.eq(server_id))
-                    .filter(channel_events::dsl::channel_id.eq(channel_id))
-                    .order(channel_events::dsl::timestamp.desc())
+                    .filter(room_events::dsl::channel_id.eq(channel_id))
+                    .order(room_events::dsl::timestamp.desc())
                     .limit(amount)
                     // .order(messages::dsl::id.desc())
                     // .order(messages::dsl::timestamp.asc())

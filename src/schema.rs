@@ -8,7 +8,7 @@ pub mod db_schema {
         }
     }
     table! {
-        servers {
+        communities {
             id -> Nullable<BigSerial>,
             nickname -> Text,
             owner -> BigInt,
@@ -24,7 +24,7 @@ pub mod db_schema {
         }
     }
     table! {
-        channels (id, server) {
+        rooms (id, server) {
             id 		-> Nullable<BigSerial>,
             server 	-> BigInt,
             name 	-> Text,
@@ -68,14 +68,14 @@ pub mod db_schema {
         }
     }
     table! {
-        server_members (server_id, userid) {
+        community_members (server_id, userid) {
             server_id -> BigInt,
             userid  -> BigInt,
             nickname -> Nullable<Text>,
         }
     }
     table! {
-        channel_events {
+        room_events {
             id -> Nullable<BigSerial>,
             channel_id -> BigInt,
             server_id -> BigInt,
@@ -88,7 +88,7 @@ pub mod db_schema {
         }
     }
     table! {
-        server_events {
+        community_events {
             id -> Nullable<BigSerial>,
             server_id -> BigInt,
             timestamp -> BigInt,

@@ -3,7 +3,7 @@ use diesel::result::Error;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = db_schema::channel_events)]
+#[diesel(table_name = db_schema::room_events)]
 pub struct RoomEvent {
     pub id: Option<i64>,
     pub channel_id: i64,

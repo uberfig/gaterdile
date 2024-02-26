@@ -94,7 +94,7 @@ impl Message {
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = db_schema::server_members)]
+#[diesel(table_name = db_schema::community_members)]
 pub struct ServerMember {
     pub server_id: i64,
     pub userid: i64,
@@ -112,7 +112,7 @@ impl From<ServerMember> for TransmissionServerMember {
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = db_schema::servers)]
+#[diesel(table_name = db_schema::communities)]
 pub struct Community {
     id: Option<i64>,
     nickname: String,
@@ -121,7 +121,7 @@ pub struct Community {
 }
 
 #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = db_schema::channels)]
+#[diesel(table_name = db_schema::rooms)]
 pub struct Room {
     pub id: Option<i64>,
     pub server: i64,
