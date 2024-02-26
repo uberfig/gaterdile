@@ -405,6 +405,12 @@ async function handle_event(serverConn, event) {
 		case "ChannelEvent":
 			handle_channelevent(event.data);
 			break;
+		case "ServerEvent":
+			
+			break;
+		case "UserEvent":
+
+			break;
 		case "Reaction":
 
 			break;

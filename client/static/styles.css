@@ -10,6 +10,7 @@
     --hovermenu_bg_color: rgb(44, 46, 51);
     --hovermenu_bg_hover_color: rgb(51, 53, 58);
 
+    --accent_very_dark: #126445;
     --accent_dark: #149262;
     --accent_light: #27b17c;
 
@@ -318,12 +319,12 @@ hr {
 
     .send {
         /* background-color: #12704c; */
-        background-color: var(--accent_dark);
+        background-color: var(--accent_very_dark);
     }
 
     .send:hover {
         /* background-color: #149262; */
-        background-color: var(--accent_light);
+        background-color: var(--accent_dark);
     }
 }
 
@@ -385,7 +386,8 @@ hr {
     height: 100%;
     left: 0;
     top: 0;
-    background: rgba(51, 51, 51, 0.7);
+    /* background: rgba(51, 51, 51, 0.7); */
+    background-color: var(--medium_dark_bg);
     z-index: 10;
     display: flex;
     justify-content: center;
@@ -394,16 +396,53 @@ hr {
 }
 
 .login {
-    background: rgb(33, 29, 48);
-    color: white;
+    background-color: var(--dark_bg);
+    color: var(--text_color);
     text-align: center;
-    padding: 3em;
-    border-radius: 15px;
+    padding-left: 3em;
+    padding-right: 3em;
+    border-radius: 5px;
 
     div {
-        margin-top: 0.5em;
-        margin-bottom: 0.5em;
+        margin-top: 2em;
+        margin-bottom: 2em;
     }
+    hr {
+        padding: 0%;
+        margin-top: -1em;
+        margin-bottom: -1em;
+        width: 80%;
+    }
+    h1 {
+        margin-bottom: 0.5em;
+        font-size: larger;
+    }
+    
+}
+
+input[type=text],
+input[type=password],
+input[type=submit] {
+    color: var(--text_color);
+    background-color: var(--text_bg_color);
+    border: 3px solid var(--dark_bg);
+    border-radius: 8px;
+    padding: 4px;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+input[type=submit] {
+    background-color: var(--accent_very_dark);
+}
+
+input[type=submit]:hover {
+    background-color: var(--accent_dark);
+}
+
+input:focus {
+    outline: none !important;
+    border-color: var(--accent_light);
 }
 
 .auth_failure {
