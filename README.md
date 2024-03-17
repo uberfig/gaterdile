@@ -1,6 +1,6 @@
 gaterdile is an open source instant messaging platform in active development
 
-as you may or may not have noticed development has stopped for a little but. it's coming to the end of term so I've been super busy and haven't been able to work on it. once exams are done I pinky promise to get back into development :3
+as you may or may not have noticed development has stopped for a little bit. it's coming to the end of term so I've been super busy and haven't been able to work on it. once exams are done I pinky promise to get back into development :3
 
 ## Immediate Roadmap
 
