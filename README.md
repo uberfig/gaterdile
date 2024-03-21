@@ -9,6 +9,7 @@ this is roughly my todo list for now, it will most likely happen in this order b
 - [x]  server channel event overhaul
 - [x]  client channel event overhaul
 - [x]  finish implimenting replies
+- [ ]  switch from diesel to sqlx for greater flexability 
 - [ ]  client support for creating and switching servers and channels
 - [ ]  file uploads
 - [ ]  message attachments
