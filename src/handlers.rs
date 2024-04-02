@@ -1,5 +1,9 @@
 use crate::{
-    db::{DbConn, User},
+    db::{
+        get_channel_events, get_community_members, get_community_rooms, get_events_prior,
+        get_msg_by_id, get_room_events_since_timestamp_and_id, get_user_by_id,
+        get_user_by_name, get_user_communities, send_message, join_community, DbConn, User,
+    },
     db_event_types::RoomEvent,
     db_types::{Message, Room, ServerMember},
     transmission::{
@@ -10,6 +14,8 @@ use crate::{
 use rocket::futures;
 use rocket::tokio::join;
 use rocket_ws as ws;
+use rocket_db_pools::{Connection, Database};
+
 
 #[derive(Debug)]
 pub struct ConnectionProps {
@@ -21,7 +27,7 @@ pub struct ConnectionProps {
     pub last_sent_id: Option<i64>,
 }
 
-async fn create_user(conn: &DbConn, user: UserAuth) -> InsertError {
+async fn create_user(conn: &Connection<DbConn>, user: UserAuth) -> InsertError {
     if user.username.is_empty() {
         return InsertError::InvalidUsername;
     }
@@ -29,7 +35,7 @@ async fn create_user(conn: &DbConn, user: UserAuth) -> InsertError {
     User::insert(user, conn).await
 }
 
-async fn auth_user(conn: &DbConn, user: UserAuth) -> AuthErr {
+async fn auth_user(conn: &Connection<DbConn>, user: UserAuth) -> AuthErr {
     if user.username.is_empty() {
         return AuthErr::InvalidUsername;
     }
@@ -38,12 +44,10 @@ async fn auth_user(conn: &DbConn, user: UserAuth) -> AuthErr {
 
 pub async fn fetch_new_events(
     props: &mut ConnectionProps,
-    conn: &DbConn,
+    conn: &Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     //----------------get user events----------------
-
-
 
     //--------------get community events-------------
 
@@ -67,8 +71,8 @@ pub async fn fetch_new_events(
 
     let x = props.last_sent_timestamp.unwrap();
 
-    let since = conn
-        .get_room_events_since_timestamp_and_id(
+    let since = get_room_events_since_timestamp_and_id(
+            conn,
             props.listening_channel.unwrap(),
             x,
             props.last_sent_id.unwrap(),
@@ -112,7 +116,7 @@ pub async fn fetch_new_events(
 pub async fn handle_send_message(
     t_msg: NewTransmissionMessage,
     props: &mut ConnectionProps,
-    conn: &DbConn,
+    conn: &Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     if t_msg.text.trim().is_empty() {
@@ -127,7 +131,7 @@ pub async fn handle_send_message(
     props.listening_channel = Some(props.listening_server.unwrap_or(t_msg.channel));
 
     let message = Message::from_newmsg(t_msg, props.uid);
-    let _x = conn.send_message(message).await;
+    let _x = send_message(conn, message).await;
 
     fetch_new_events(props, conn, stream).await;
 }
@@ -135,7 +139,7 @@ pub async fn handle_send_message(
 pub async fn handle_auth(
     user: UserAuth,
     props: &mut ConnectionProps,
-    conn: &DbConn,
+    conn: &Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     let auth = auth_user(conn, user).await;
@@ -162,7 +166,7 @@ pub async fn handle_auth(
 pub async fn handle_create_user(
     x: UserAuth,
     props: &mut ConnectionProps,
-    conn: &DbConn,
+    conn: &Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     let err = create_user(conn, x).await;
@@ -186,10 +190,10 @@ pub async fn handle_get_channel(
     server_id: i64,
     channel_id: i64,
     props: &mut ConnectionProps,
-    conn: &DbConn,
+    conn: &Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let a = conn.get_channel_events(channel_id, 40).await;
+    let a = get_channel_events(conn, channel_id, 40).await;
 
     if let Ok(x) = a {
         props.listening_channel = Some(channel_id);
@@ -222,11 +226,11 @@ pub async fn handle_get_channel(
 
 pub async fn handle_get_prior(
     channel_id: i64,
-    conn: &DbConn,
+    conn: &Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
     last_msg: i64,
 ) {
-    let msg = conn.get_msg_by_id(last_msg).await;
+    let msg = get_msg_by_id(conn, last_msg).await;
 
     let message = match msg {
         Ok(x) => x,
@@ -239,9 +243,7 @@ pub async fn handle_get_prior(
         }
     };
 
-    let a = conn
-        .get_events_prior(channel_id, message.timestamp, last_msg, 40)
-        .await;
+    let a = get_events_prior(conn, channel_id, message.timestamp, last_msg, 40).await;
 
     if let Ok(x) = a {
         if x.is_empty() {
@@ -265,11 +267,11 @@ pub async fn handle_get_prior(
 
 pub async fn handle_get_server(
     server_id: i64,
-    conn: &DbConn,
+    conn: &Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let members_fut = conn.get_community_members(server_id);
-    let channels_fut = conn.get_community_rooms(server_id);
+    let members_fut = get_community_members(conn, server_id);
+    let channels_fut = get_community_rooms(conn, server_id);
     let (members, channels) = join!(members_fut, channels_fut);
     let members = members
         .unwrap_or(vec![])
@@ -294,10 +296,10 @@ pub async fn handle_get_server(
 pub async fn handle_join_server(
     server_id: i64,
     userid: i64,
-    conn: &DbConn,
+    conn: &Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let a = conn.join_community(server_id, userid, None).await;
+    let a = join_community(conn, server_id, userid, None).await;
     let _ = TransmissionType::JoinServerResult(a)
         .wrap_into_transmission()
         .send(stream)
