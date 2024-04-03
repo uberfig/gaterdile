@@ -28,7 +28,9 @@ serde_json = "1.0.107"
 argon2 = "0.5.2"
 # sqlx = { version = "0.7.4", features = ["runtime-tokio", "postgres",]}
 sqlx = { version = "0.7.4", features = ["runtime-tokio", "postgres", "macros"]}
-sea-orm = { version = "^0.12.0", features = [ "sqlx-postgres", "macros" ] }
+sea-orm = "0.12.15"
+# sea-orm = { version = "0.12.15", features = ["sqlx-postgres", "tokio", "macros"]}
+# sea-orm = { version = "^0.12.0", features = [ "sqlx-postgres", "tokio", "macros" ] }
 # ormx = { version = "0.10.0", features = ["postgres"] }
 
 [dependencies.rocket_db_pools]

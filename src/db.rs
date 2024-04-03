@@ -19,7 +19,10 @@ use rocket_db_pools::{Connection, Database};
 // #[diesel(table_name = db_schema::users)]
 // #[derive(Debug, ormx::Table)]
 // #[ormx(table = "users", id = user_id, insertable, deletable)]
+// #[derive(Clone, Debug, PartialEq, DeriveEntity)]
+// #[sea_orm(table_name = "users")]
 pub struct User {
+    // #[sea_orm(primary_key)]
     pub id: Option<i64>,
     pub username: String,
     pub nickname: Option<String>,
@@ -121,6 +124,7 @@ pub struct DbConn(sqlx::PgPool);
 // }
 
 use rocket_db_pools::Initializer;
+use sea_orm::{DeriveEntity, DeriveEntityModel};
 
 impl DbConn {
     pub fn init() -> Initializer<Self> {

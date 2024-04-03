@@ -1,8 +1,7 @@
 use crate::{
     db::{
         get_channel_events, get_community_members, get_community_rooms, get_events_prior,
-        get_msg_by_id, get_room_events_since_timestamp_and_id, get_user_by_id,
-        get_user_by_name, get_user_communities, send_message, join_community, DbConn, User,
+        get_msg_by_id, get_room_events_since_timestamp_and_id, send_message, join_community, DbConn, User,
     },
     db_event_types::RoomEvent,
     db_types::{Message, Room, ServerMember},
@@ -14,7 +13,7 @@ use crate::{
 use rocket::futures;
 use rocket::tokio::join;
 use rocket_ws as ws;
-use rocket_db_pools::{Connection, Database};
+use rocket_db_pools::Connection;
 
 
 #[derive(Debug)]
