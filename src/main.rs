@@ -77,7 +77,7 @@ async fn handle_transmission(
 
     match transmission {
         TransmissionType::SendMessage(t_msg) => {
-            handle_send_message(t_msg, props, &conn, stream).await;
+            handle_send_message(t_msg, props, conn, stream).await;
         }
         TransmissionType::Reaction(_) => {
             todo!()
@@ -86,7 +86,7 @@ async fn handle_transmission(
             handle_auth(user, props, &mut ***conn, stream).await;
         }
         TransmissionType::CreateUser(x) => {
-            handle_create_user(x, props, &conn, stream).await;
+            handle_create_user(x, props, conn, stream).await;
         }
 
         //------------community management----------
@@ -94,21 +94,21 @@ async fn handle_transmission(
             todo!()
         }
         TransmissionType::JoinCommunity(server_id) => {
-            handle_join_server(server_id, props.uid, &conn, stream).await;
+            handle_join_server(server_id, props.uid, conn, stream).await;
         }
         TransmissionType::GetCommunity(server_id) => {
-            handle_get_server(server_id, &conn, stream).await;
+            handle_get_server(server_id, conn, stream).await;
         }
         TransmissionType::GetUserServers => {
             todo!()
         }
         TransmissionType::CreateRoom(_, _) => todo!(),
         TransmissionType::GetRoom(server_id, channel_id) => {
-            handle_get_channel(server_id, channel_id, props, &conn, stream).await;
+            handle_get_channel(server_id, channel_id, props, conn, stream).await;
         }
 
         TransmissionType::GetPriorMessages(since) => {
-            handle_get_prior(props.listening_channel.unwrap_or(-1), &conn, stream, since).await
+            handle_get_prior(props.listening_channel.unwrap_or(-1), conn, stream, since).await
         }
         TransmissionType::GetEmoji(_) => todo!(),
         TransmissionType::GetAttachment(_) => todo!(),
