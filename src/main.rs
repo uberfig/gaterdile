@@ -69,9 +69,9 @@ pub fn stage() -> AdHoc {
 async fn handle_transmission(
     transmission: TransmissionType,
     props: &mut ConnectionProps,
-    mut conn: Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
-) -> Connection<DbConn> {
+) {
     // use rocket::futures::SinkExt;
     println!("handleing: {}", transmission);
 
@@ -83,7 +83,7 @@ async fn handle_transmission(
             todo!()
         }
         TransmissionType::Auth(user) => {
-            handle_auth(user, props, &mut **conn, stream).await;
+            handle_auth(user, props, &mut ***conn, stream).await;
         }
         TransmissionType::CreateUser(x) => {
             handle_create_user(x, props, &conn, stream).await;
@@ -129,8 +129,6 @@ async fn handle_transmission(
             let _ = Transmission::invalid().send(stream).await;
         }
     }
-
-    return conn;
 }
 
 //with thanks to this issue I found online: https://stackoverflow.com/questions/77780189/how-to-detect-rust-rocket-ws-client-disconnected-from-websocket
@@ -163,7 +161,7 @@ pub fn message_channel(ws: ws::WebSocket, mut conn: Connection<DbConn>) -> ws::C
 									let data = Transmission::parse(&text).unwrap_or(Transmission { data: TransmissionType::InvalidTransmission, transmission_type: "".to_string() });
 
                                     if props.authenticated || matches!(data.data, TransmissionType::Auth(..) | TransmissionType::CreateUser(..)) {
-                                        conn = handle_transmission(data.data, &mut props, conn, &mut stream).await;
+                                        handle_transmission(data.data, &mut props, &mut conn, &mut stream).await;
                                     } else {
                                         let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
                                     }
