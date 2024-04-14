@@ -77,8 +77,23 @@ impl User {
     //     }
     // }
 
-    pub async fn auth(user: UserAuth, conn: &Connection<DbConn>) -> AuthErr {
-        todo!()
+    pub async fn auth(user: UserAuth, conn: &mut PgConnection) -> AuthErr {
+        let e = get_user_by_name(conn, user.username).await;
+
+        if e.is_err() {
+            return AuthErr::InvalidUsername;
+        }
+
+        let query = e.unwrap();
+
+        let password_hash = PasswordHash::new(&query.password).unwrap();
+        let verified = Argon2::default().verify_password(user.password.as_bytes(), &password_hash);
+
+        match verified {
+            Ok(_) => AuthErr::Success(query.id.unwrap()),
+            Err(_) => AuthErr::InvalidPassword,
+        }
+    
     }
 
     // pub async fn auth(user: UserAuth, conn: &DbConn) -> AuthErr {
@@ -125,6 +140,7 @@ pub struct DbConn(sqlx::PgPool);
 
 use rocket_db_pools::Initializer;
 use sea_orm::{DeriveEntity, DeriveEntityModel};
+use sqlx::PgConnection;
 
 impl DbConn {
     pub fn init() -> Initializer<Self> {
@@ -157,8 +173,17 @@ pub async fn get_user_by_id(conn: &Connection<DbConn>, id: i64) -> Result<User, 
 //     Ok(user)
 // }
 
-pub async fn get_user_by_name(conn: &Connection<DbConn>, name: String) -> Result<User, Error> {
-    todo!()
+pub async fn get_user_by_name(conn: &mut PgConnection, name: String) -> Result<User, Error> {
+
+    let user = sqlx::query_as!(
+        User,
+        "select * from users where username = $1",
+        name
+    )
+    .fetch_optional(conn)
+    .await;
+
+    todo!();
 }
 
 // pub async fn get_user_name(&self, id: i64) -> Result<String, Error> {

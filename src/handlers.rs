@@ -14,6 +14,7 @@ use rocket::futures;
 use rocket::tokio::join;
 use rocket_ws as ws;
 use rocket_db_pools::Connection;
+use sqlx::PgConnection;
 
 
 #[derive(Debug)]
@@ -34,7 +35,7 @@ async fn create_user(conn: &Connection<DbConn>, user: UserAuth) -> InsertError {
     User::insert(user, conn).await
 }
 
-async fn auth_user(conn: &Connection<DbConn>, user: UserAuth) -> AuthErr {
+async fn auth_user(conn: &mut PgConnection, user: UserAuth) -> AuthErr {
     if user.username.is_empty() {
         return AuthErr::InvalidUsername;
     }
@@ -138,7 +139,7 @@ pub async fn handle_send_message(
 pub async fn handle_auth(
     user: UserAuth,
     props: &mut ConnectionProps,
-    conn: &Connection<DbConn>,
+    conn: &mut PgConnection,
     stream: &mut ws::stream::DuplexStream,
 ) {
     let auth = auth_user(conn, user).await;
