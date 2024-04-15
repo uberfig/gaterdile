@@ -27,7 +27,7 @@ pub struct ConnectionProps {
     pub last_sent_id: Option<i64>,
 }
 
-async fn create_user(conn: &Connection<DbConn>, user: UserAuth) -> InsertError {
+async fn create_user(conn: &mut Connection<DbConn>, user: UserAuth) -> InsertError {
     if user.username.is_empty() {
         return InsertError::InvalidUsername;
     }
@@ -166,7 +166,7 @@ pub async fn handle_auth(
 pub async fn handle_create_user(
     x: UserAuth,
     props: &mut ConnectionProps,
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     let err = create_user(conn, x).await;

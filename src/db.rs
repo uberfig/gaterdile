@@ -10,7 +10,7 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-use rocket::serde::Deserialize;
+// use rocket::serde::Deserialize;
 use rocket_db_pools::{Connection, Database};
 
 // use ormx::{Insert, Table, Delete};
@@ -30,42 +30,38 @@ pub struct User {
 }
 
 impl User {
-    pub async fn insert(new_user: UserAuth, conn: &Connection<DbConn>) -> InsertError {
-        todo!()
+    pub async fn insert(new_user: UserAuth, conn: &mut Connection<DbConn>) -> InsertError {
+        if has_user(&mut ***conn, new_user.username.clone()).await {
+            return InsertError::UsernameTaken;
+        }
+
+        let salt = SaltString::generate(&mut OsRng);
+        let argon2 = Argon2::default();
+        let password_hash = argon2.hash_password(new_user.password.as_bytes(), &salt);
+
+        if password_hash.is_err() {
+            return InsertError::InvalidPassword;
+        }
+
+        let pass = password_hash.unwrap().to_string();
+
+        let t = User {
+            id: None,
+            username: new_user.username,
+            nickname: None,
+            password: pass,
+        };
+
+        let e = insert_user(&mut ***conn, t).await;
+        match e {
+            Ok(x) => {return InsertError::Success(x);},
+            Err(_x) => {
+                println!("insert");
+                dbg!(_x);
+                return InsertError::DbError;
+            }
+        };
     }
-
-    // pub async fn insert(new_user: UserAuth, conn: &DbConn) -> InsertError {
-    //     if conn.has_user(new_user.username.clone()).await {
-    //         return InsertError::UsernameTaken;
-    //     }
-
-    //     let salt = SaltString::generate(&mut OsRng);
-    //     let argon2 = Argon2::default();
-    //     let password_hash = argon2.hash_password(new_user.password.as_bytes(), &salt);
-
-    //     if password_hash.is_err() {
-    //         return InsertError::InvalidPassword;
-    //     }
-
-    //     let pass = password_hash.unwrap().to_string();
-
-    //     let t = User {
-    //         id: None,
-    //         username: new_user.username,
-    //         nickname: None,
-    //         password: pass,
-    //     };
-
-    //     let e = conn.insert_user(t).await;
-    //     match e {
-    //         Ok(x) => InsertError::Success(x),
-    //         Err(_x) => {
-    //             println!("insert");
-    //             dbg!(_x);
-    //             InsertError::DbError
-    //         }
-    //     }
-    // }
 
     pub async fn auth(user: UserAuth, conn: &mut PgConnection) -> AuthErr {
         let e = get_user_by_name(conn, user.username).await;
@@ -87,23 +83,6 @@ impl User {
     
     }
 
-    // pub async fn auth(user: UserAuth, conn: &DbConn) -> AuthErr {
-    //     let e = conn.get_user_by_name(user.username).await;
-
-    //     if e.is_err() {
-    //         return AuthErr::InvalidUsername;
-    //     }
-
-    //     let query = e.unwrap();
-
-    //     let password_hash = PasswordHash::new(&query.password).unwrap();
-    //     let verified = Argon2::default().verify_password(user.password.as_bytes(), &password_hash);
-
-    //     match verified {
-    //         Ok(_) => AuthErr::Success(query.id.unwrap()),
-    //         Err(_) => AuthErr::InvalidPassword,
-    //     }
-    // }
 }
 
 // use rocket_db_pools::{Database, Connection};
@@ -157,13 +136,6 @@ pub async fn get_user_by_id(conn: &Connection<DbConn>, id: i64) -> Result<User, 
     todo!()
 }
 
-// pub async fn get_user_by_name(&self, name: String) -> Result<User, Error> {
-//     let user: User = self
-//         .run(move |conn| users::table.filter(users::username.eq(name)).first(conn))
-//         .await?;
-//     Ok(user)
-// }
-
 pub async fn get_user_by_name(conn: &mut PgConnection, name: String) -> Result<Option<User>, Error> {
 
     let user = sqlx::query_as!(
@@ -192,7 +164,7 @@ pub async fn get_user_name(conn: &Connection<DbConn>, id: i64) -> Result<String,
     todo!()
 }
 
-pub async fn insert_user(conn: &Connection<DbConn>, user: User) -> Result<usize, Error> {
+pub async fn insert_user(conn: &mut PgConnection, user: User) -> Result<usize, Error> {
     todo!()
 }
 
@@ -205,7 +177,7 @@ pub async fn insert_user(conn: &Connection<DbConn>, user: User) -> Result<usize,
 //     .await
 // }
 
-pub async fn has_user(conn: &Connection<DbConn>, name: String) -> bool {
+pub async fn has_user(conn: &mut PgConnection, name: String) -> bool {
     todo!()
 }
 
