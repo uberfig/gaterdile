@@ -2,6 +2,7 @@ use crate::{db::{DbConn, get_msg_by_id}, db_types::Message, transmission};
 // use diesel::result::Error;
 use serde::{Deserialize, Serialize};
 use rocket_db_pools::{Connection, Database};
+use sqlx::Error;
 
 // #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
 // #[diesel(table_name = db_schema::room_events)]
@@ -69,7 +70,7 @@ impl RoomEvent {
     pub async fn get_concrete(
         self,
         conn: &Connection<DbConn>,
-    ) -> Result<transmission::ChannelEvent, crate::db::Error> {
+    ) -> Result<transmission::ChannelEvent, Error> {
         let evt_type = self.to_event_type();
         match evt_type {
             RoomEventType::NewMessage(x) => {

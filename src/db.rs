@@ -29,16 +29,6 @@ pub struct User {
     password: String,
 }
 
-#[derive(Debug)]
-pub enum Error {
-    FAILURE,
-}
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
-}
-
 impl User {
     pub async fn insert(new_user: UserAuth, conn: &Connection<DbConn>) -> InsertError {
         todo!()
@@ -79,12 +69,13 @@ impl User {
 
     pub async fn auth(user: UserAuth, conn: &mut PgConnection) -> AuthErr {
         let e = get_user_by_name(conn, user.username).await;
+        let query = e.unwrap();
 
-        if e.is_err() {
+        if query.is_none() {
             return AuthErr::InvalidUsername;
         }
 
-        let query = e.unwrap();
+        let query = query.unwrap();
 
         let password_hash = PasswordHash::new(&query.password).unwrap();
         let verified = Argon2::default().verify_password(user.password.as_bytes(), &password_hash);
@@ -139,8 +130,8 @@ pub struct DbConn(sqlx::PgPool);
 // }
 
 use rocket_db_pools::Initializer;
-use sea_orm::{DeriveEntity, DeriveEntityModel};
-use sqlx::PgConnection;
+use sea_orm::{query, DeriveEntity, DeriveEntityModel};
+use sqlx::{Error, PgConnection};
 
 impl DbConn {
     pub fn init() -> Initializer<Self> {
@@ -173,7 +164,7 @@ pub async fn get_user_by_id(conn: &Connection<DbConn>, id: i64) -> Result<User, 
 //     Ok(user)
 // }
 
-pub async fn get_user_by_name(conn: &mut PgConnection, name: String) -> Result<User, Error> {
+pub async fn get_user_by_name(conn: &mut PgConnection, name: String) -> Result<Option<User>, Error> {
 
     let user = sqlx::query_as!(
         User,
@@ -183,7 +174,7 @@ pub async fn get_user_by_name(conn: &mut PgConnection, name: String) -> Result<U
     .fetch_optional(conn)
     .await;
 
-    todo!();
+    return user;
 }
 
 // pub async fn get_user_name(&self, id: i64) -> Result<String, Error> {
