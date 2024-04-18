@@ -434,7 +434,6 @@ pub async fn get_room_events_since_timestamp_and_id(
 
 pub async fn get_events_prior(
     conn: &mut Connection<DbConn>,
-    // server_id: i32,
     channel_id: i64,
     prior_to: i64,
     last_msg: i64,
@@ -491,12 +490,24 @@ pub async fn get_events_prior(
 // }
 
 pub async fn get_channel_events(
-    conn: &Connection<DbConn>,
-    // server_id: i32,
+    conn: &mut Connection<DbConn>,
     channel_id: i64,
     amount: i64,
 ) -> Result<Vec<RoomEvent>, Error> {
-    todo!()
+    let mut a = sqlx::query_as!(
+        RoomEvent,
+        "SELECT * FROM room_events WHERE channel_id = $1 ORDER BY timestamp DESC LIMIT $2",
+        channel_id, amount
+    ).fetch_all(&mut ***conn).await;
+
+    match &mut a {
+        Ok(x) => {
+            x.sort_unstable_by_key(|y| y.timestamp);
+        }
+        Err(_) => {}
+    }
+
+    a
 }
 
 // pub async fn get_channel_events(
