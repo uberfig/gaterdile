@@ -109,7 +109,7 @@ pub struct DbConn(sqlx::PgPool);
 // }
 
 use rocket_db_pools::Initializer;
-use sea_orm::{query, DeriveEntity, DeriveEntityModel};
+// use sea_orm::{query, DeriveEntity, DeriveEntityModel};
 use sqlx::{Error, PgConnection};
 
 impl DbConn {
@@ -380,13 +380,27 @@ pub async fn create_channel_event(
 // }
 
 pub async fn get_room_events_since_timestamp_and_id(
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     channel_id: i64,
     since: i64,
     id: i64,
     amount: i64,
 ) -> Result<Vec<RoomEvent>, Error> {
-    todo!()
+
+    let mut a = sqlx::query_as!(
+        RoomEvent,
+        "SELECT * FROM room_events WHERE channel_id = $1 AND timestamp >= $2 AND id != $3 ORDER BY timestamp DESC LIMIT $4",
+        channel_id, since, id, amount
+    ).fetch_all(&mut ***conn).await;
+
+    match &mut a {
+        Ok(x) => {
+            x.sort_unstable_by_key(|y| y.timestamp);
+        }
+        Err(_) => {}
+    }
+
+    a
 }
 
 // pub async fn get_room_events_since_timestamp_and_id(
@@ -419,14 +433,27 @@ pub async fn get_room_events_since_timestamp_and_id(
 // }
 
 pub async fn get_events_prior(
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     // server_id: i32,
     channel_id: i64,
     prior_to: i64,
     last_msg: i64,
     amount: i64,
 ) -> Result<Vec<RoomEvent>, Error> {
-    todo!()
+    let mut a = sqlx::query_as!(
+        RoomEvent,
+        "SELECT * FROM room_events WHERE channel_id = $1 AND timestamp <= $2 AND id != $3 ORDER BY timestamp ASC LIMIT $4",
+        channel_id, prior_to, last_msg, amount
+    ).fetch_all(&mut ***conn).await;
+
+    match &mut a {
+        Ok(x) => {
+            x.sort_unstable_by_key(|y| y.timestamp);
+        }
+        Err(_) => {}
+    }
+
+    a
 }
 
 // pub async fn get_events_prior(

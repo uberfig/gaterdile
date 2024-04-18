@@ -149,8 +149,7 @@ pub fn message_channel(ws: ws::WebSocket, mut conn: Connection<DbConn>) -> ws::C
 						_ = interval.tick() => {
 							// Send message every 10 seconds
 							if props.authenticated {
-								// fetch_new_events(&mut props, &conn, &mut stream).await;
-                                todo!()
+								fetch_new_events(&mut props, &mut conn, &mut stream).await;
 							}
 						}
 						Some(Ok(message)) = stream.next() => {

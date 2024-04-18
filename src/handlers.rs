@@ -44,7 +44,7 @@ async fn auth_user(conn: &mut PgConnection, user: UserAuth) -> AuthErr {
 
 pub async fn fetch_new_events(
     props: &mut ConnectionProps,
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     //----------------get user events----------------
@@ -116,7 +116,7 @@ pub async fn fetch_new_events(
 pub async fn handle_send_message(
     t_msg: NewTransmissionMessage,
     props: &mut ConnectionProps,
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     if t_msg.text.trim().is_empty() {
@@ -226,7 +226,7 @@ pub async fn handle_get_channel(
 
 pub async fn handle_get_prior(
     channel_id: i64,
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
     last_msg: i64,
 ) {
