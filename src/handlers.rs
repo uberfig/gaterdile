@@ -190,7 +190,7 @@ pub async fn handle_get_channel(
     server_id: i64,
     channel_id: i64,
     props: &mut ConnectionProps,
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     let a = get_channel_events(conn, channel_id, 40).await;
@@ -267,12 +267,12 @@ pub async fn handle_get_prior(
 
 pub async fn handle_get_server(
     server_id: i64,
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let members_fut = get_community_members(conn, server_id);
-    let channels_fut = get_community_rooms(conn, server_id);
-    let (members, channels) = join!(members_fut, channels_fut);
+    let members = get_community_members(conn, server_id).await;
+    let channels = get_community_rooms(conn, server_id).await;
+    // let (members, channels) = join!(members_fut, channels_fut);
     let members = members
         .unwrap_or(vec![])
         .into_iter()

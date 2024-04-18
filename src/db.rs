@@ -240,10 +240,32 @@ pub async fn send_message(conn: &Connection<DbConn>, message: Message) -> Result
 // }
 
 pub async fn get_community_members(
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     server_id: i64,
 ) -> Result<Vec<ServerMember>, Error> {
-    todo!()
+
+    let mut val = sqlx::query_as!(
+        ServerMember,
+        "SELECT * FROM community_members WHERE server_id = $1",
+        server_id
+    ).fetch_all(&mut ***conn).await;
+
+    match &mut val {
+        Ok(y) => {
+            for member in y {
+                if member.nickname.is_none() {
+                    let uname = get_user_name(conn, member.userid).await;
+                    member.nickname = Some(uname.unwrap_or("unable to fetch".to_string()));
+                }
+            }
+        }
+        Err(x) => {
+            println!("err in get server members");
+            dbg!(&x);
+        }
+    }
+
+    val
 }
 
 // pub async fn get_community_members(
