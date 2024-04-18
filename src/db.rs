@@ -31,7 +31,11 @@ pub struct User {
 
 impl User {
     pub async fn insert(new_user: UserAuth, conn: &mut Connection<DbConn>) -> InsertError {
-        if has_user(&mut ***conn, new_user.username.clone()).await {
+        let result = has_user(&mut ***conn, new_user.username.clone()).await;
+        if result.is_err() {
+            return InsertError::DbError;
+        }
+        if result.unwrap() {
             return InsertError::UsernameTaken;
         }
 
@@ -63,7 +67,7 @@ impl User {
         };
     }
 
-    pub async fn auth(user: UserAuth, conn: &mut PgConnection) -> AuthErr {
+    pub async fn auth(user: UserAuth, conn: &mut Connection<DbConn>) -> AuthErr {
         let e = get_user_by_name(conn, user.username).await;
         let query = e.unwrap();
 
@@ -132,18 +136,26 @@ impl DbConn {
 //     Ok(user)
 // }
 
-pub async fn get_user_by_id(conn: &Connection<DbConn>, id: i64) -> Result<User, Error> {
-    todo!()
+pub async fn get_user_by_id(conn: &mut Connection<DbConn>, id: i64) -> Result<Option<User>, Error> {
+    let user = sqlx::query_as!(
+        User,
+        "select * from users where id = $1",
+        id
+    )
+    .fetch_optional(&mut ***conn)
+    .await;
+
+    return user;
 }
 
-pub async fn get_user_by_name(conn: &mut PgConnection, name: String) -> Result<Option<User>, Error> {
+pub async fn get_user_by_name(conn: &mut Connection<DbConn>, name: String) -> Result<Option<User>, Error> {
 
     let user = sqlx::query_as!(
         User,
         "select * from users where username = $1",
         name
     )
-    .fetch_optional(conn)
+    .fetch_optional(&mut ***conn)
     .await;
 
     return user;
@@ -177,8 +189,19 @@ pub async fn insert_user(conn: &mut PgConnection, user: User) -> Result<usize, E
 //     .await
 // }
 
-pub async fn has_user(conn: &mut PgConnection, name: String) -> bool {
-    todo!()
+pub async fn has_user(conn: &mut PgConnection, name: String) -> Result<bool, Error> {
+    let user = sqlx::query_as!(
+        User,
+        "select * from users where username = $1",
+        name
+    )
+    .fetch_optional(conn)
+    .await;
+
+    match user {
+        Ok(x) => {return Ok(x.is_some());},
+        Err(x) => {return Err(x);}
+    }
 }
 
 // pub async fn has_user(&self, name: String) -> bool {
@@ -298,14 +321,20 @@ pub async fn get_community_members(
 //     val
 // }
 
+/// gets all servers a user is a part of
 pub async fn get_user_communities(
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     uid: i64,
 ) -> Result<Vec<ServerMember>, Error> {
-    todo!()
+    let a = sqlx::query_as!(
+        ServerMember,
+        "SELECT * FROM community_members WHERE userid = $1",
+        uid
+    ).fetch_all(&mut ***conn).await;
+
+    a
 }
 
-//gets all servers a user is a part of
 // pub async fn get_user_communities(
 //     &self,
 //     uid: i64,
@@ -318,11 +347,18 @@ pub async fn get_user_communities(
 //     .await
 // }
 
+/// gets all rooms in a community 
 pub async fn get_community_rooms(
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     server_id: i64,
-) -> Result<Vec<Room>, ()> {
-    todo!()
+) -> Result<Vec<Room>, Error> {
+    let a = sqlx::query_as!(
+        Room,
+        "SELECT * FROM rooms WHERE server = $1",
+        server_id
+    ).fetch_all(&mut ***conn).await;
+
+    a
 }
 
 // pub async fn get_community_rooms(
@@ -401,6 +437,7 @@ pub async fn create_channel_event(
 //     .await
 // }
 
+/// gets all events in a room that have happened after the provided timestamp excluding the message with the provided id
 pub async fn get_room_events_since_timestamp_and_id(
     conn: &mut Connection<DbConn>,
     channel_id: i64,
@@ -454,6 +491,7 @@ pub async fn get_room_events_since_timestamp_and_id(
 //     a
 // }
 
+/// get events that happened prior to a given event
 pub async fn get_events_prior(
     conn: &mut Connection<DbConn>,
     channel_id: i64,
@@ -511,7 +549,8 @@ pub async fn get_events_prior(
 //     val
 // }
 
-pub async fn get_channel_events(
+/// get the latest n events in a room, good for first opening a room 
+pub async fn get_room_events(
     conn: &mut Connection<DbConn>,
     channel_id: i64,
     amount: i64,

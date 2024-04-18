@@ -1,6 +1,6 @@
 use crate::{
     db::{
-        get_channel_events, get_community_members, get_community_rooms, get_events_prior,
+        get_room_events, get_community_members, get_community_rooms, get_events_prior,
         get_msg_by_id, get_room_events_since_timestamp_and_id, send_message, join_community, DbConn, User,
     },
     db_event_types::RoomEvent,
@@ -11,7 +11,7 @@ use crate::{
     },
 };
 use rocket::futures;
-use rocket::tokio::join;
+// use rocket::tokio::join;
 use rocket_ws as ws;
 use rocket_db_pools::Connection;
 use sqlx::PgConnection;
@@ -35,7 +35,7 @@ async fn create_user(conn: &mut Connection<DbConn>, user: UserAuth) -> InsertErr
     User::insert(user, conn).await
 }
 
-async fn auth_user(conn: &mut PgConnection, user: UserAuth) -> AuthErr {
+async fn auth_user(conn: &mut Connection<DbConn>, user: UserAuth) -> AuthErr {
     if user.username.is_empty() {
         return AuthErr::InvalidUsername;
     }
@@ -139,7 +139,7 @@ pub async fn handle_send_message(
 pub async fn handle_auth(
     user: UserAuth,
     props: &mut ConnectionProps,
-    conn: &mut PgConnection,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     let auth = auth_user(conn, user).await;
@@ -193,7 +193,7 @@ pub async fn handle_get_channel(
     conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let a = get_channel_events(conn, channel_id, 40).await;
+    let a = get_room_events(conn, channel_id, 40).await;
 
     if let Ok(x) = a {
         props.listening_channel = Some(channel_id);

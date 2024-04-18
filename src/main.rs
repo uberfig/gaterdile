@@ -83,7 +83,7 @@ async fn handle_transmission(
             todo!()
         }
         TransmissionType::Auth(user) => {
-            handle_auth(user, props, &mut ***conn, stream).await;
+            handle_auth(user, props, conn, stream).await;
         }
         TransmissionType::CreateUser(x) => {
             handle_create_user(x, props, conn, stream).await;
