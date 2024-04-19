@@ -230,7 +230,7 @@ pub async fn has_user(conn: &mut PgConnection, name: String) -> Result<bool, Err
 //     e.is_ok()
 // }
 
-pub async fn get_msg_by_id(conn: &mut Connection<DbConn>, id: i64) -> Result<Message, Error> {
+pub async fn get_msg_by_id(conn: &mut Connection<DbConn>, id: i64) -> Result<Option<Message>, Error> {
     let user = sqlx::query_as!(
         Message,
         "select * from messages where id = $1",
@@ -240,7 +240,7 @@ pub async fn get_msg_by_id(conn: &mut Connection<DbConn>, id: i64) -> Result<Mes
     .await;
 
     match user {
-        Ok(x) => return Ok(x.expect("getting message by an id that doesn't exist")),
+        Ok(x) => return Ok(x),
         Err(x) => return Err(x),
     }
 }
@@ -252,47 +252,26 @@ pub async fn get_msg_by_id(conn: &mut Connection<DbConn>, id: i64) -> Result<Mes
 //     Ok(message)
 // }
 
-pub async fn send_message(conn: &Connection<DbConn>, message: Message) -> Result<Message, Error> {
-    todo!()
+pub async fn send_message(conn: &mut Connection<DbConn>, message: Message) -> Result<i64, Error> {
+    let timestamp = message.timestamp;
+    let channel_id = message.channel;
+    let server_id = message.server;
+
+    let result = sqlx::query!(
+        "INSERT INTO messages(sender, server, channel, reply, is_reply, text, timestamp) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+        message.sender, message.server, message.channel, message.reply, message.is_reply, message.text, message.timestamp
+    ).fetch_one(&mut ***conn)
+    .await;
+
+    match result {
+        Ok(x) => {
+            let _y = create_channel_event(conn, channel_id, server_id, timestamp, RoomEventType::NewMessage(x.id)).await;
+
+            return Ok(x.id)
+        },
+        Err(x) => return Err(x),
+    }
 }
-
-// pub async fn send_message(&self, message: Message) -> Result<Message, diesel::result::Error> {
-//     let timestamp = message.timestamp;
-//     let channel_id = message.channel;
-//     let server_id = message.server;
-
-//     let err_t = self
-//         .run(move |c| {
-//             c.transaction(|c| {
-//                 let _a = diesel::insert_into(db_schema::messages::table)
-//                     .values(message)
-//                     .get_result::<Message>(c);
-//                 diesel::result::QueryResult::Ok(_a)
-//             })
-//         })
-//         .await?;
-
-//     match &err_t {
-//         Ok(x) => {
-//             println!("inserting {}", x.id.unwrap());
-//             let y = self
-//                 .create_channel_event(
-//                     channel_id,
-//                     server_id,
-//                     timestamp,
-//                     RoomEventType::NewMessage(x.id.unwrap()),
-//                 )
-//                 .await;
-//             dbg!(&y);
-//             let _restut = y.expect("unable to insert message event for new message");
-//         }
-//         Err(_) => todo!(),
-//     }
-
-//     err_t
-
-//     // return Ok(1);
-// }
 
 pub async fn get_community_members(
     conn: &mut Connection<DbConn>,
@@ -448,7 +427,7 @@ pub async fn create_channel_event(
     server_id: i64,
     timestamp: i64,
     event_type: RoomEventType,
-) -> Result<usize, ()> {
+) -> Result<i64, Error> {
     todo!()
 }
 

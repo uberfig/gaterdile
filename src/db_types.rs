@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use serde::{Deserialize, Serialize};
-use rocket_db_pools::{Connection, Database};
+use rocket_db_pools::Connection;
 
 
 #[derive(
@@ -44,6 +44,7 @@ impl Message {
                 let mut reply_uid = -1;
                 let prev = match get_msg_by_id(conn, x).await {
                     Ok(x) => {
+                        let x = x.unwrap();
                         reply_uid = x.sender;
                         x.text
                     }

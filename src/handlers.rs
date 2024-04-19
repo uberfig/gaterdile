@@ -248,7 +248,7 @@ pub async fn handle_get_prior(
     let msg = get_msg_by_id(conn, last_msg).await;
 
     let message = match msg {
-        Ok(x) => x,
+        Ok(x) => x.unwrap(),
         Err(_) => {
             let _ = TransmissionType::InvalidTransmission
                 .wrap_into_transmission()
