@@ -58,7 +58,9 @@ impl User {
 
         let e = insert_user(conn, t).await;
         match e {
-            Ok(x) => {return InsertResult::Success(x);},
+            Ok(x) => {
+                return InsertResult::Success(x);
+            }
             Err(_x) => {
                 println!("insert");
                 dbg!(_x);
@@ -84,9 +86,7 @@ impl User {
             Ok(_) => AuthErr::Success(query.id.unwrap()),
             Err(_) => AuthErr::InvalidPassword,
         }
-    
     }
-
 }
 
 // use rocket_db_pools::{Database, Connection};
@@ -137,28 +137,18 @@ impl DbConn {
 // }
 
 pub async fn get_user_by_id(conn: &mut Connection<DbConn>, id: i64) -> Result<Option<User>, Error> {
-    let user = sqlx::query_as!(
-        User,
-        "select * from users where id = $1",
-        id
-    )
-    .fetch_optional(&mut ***conn)
-    .await;
-
-    return user;
+    sqlx::query_as!(User, "select * from users where id = $1", id)
+        .fetch_optional(&mut ***conn)
+        .await
 }
 
-pub async fn get_user_by_name(conn: &mut Connection<DbConn>, name: String) -> Result<Option<User>, Error> {
-
-    let user = sqlx::query_as!(
-        User,
-        "select * from users where username = $1",
-        name
-    )
-    .fetch_optional(&mut ***conn)
-    .await;
-
-    return user;
+pub async fn get_user_by_name(
+    conn: &mut Connection<DbConn>,
+    name: String,
+) -> Result<Option<User>, Error> {
+    sqlx::query_as!(User, "select * from users where username = $1", name)
+        .fetch_optional(&mut ***conn)
+        .await
 }
 
 // pub async fn get_user_name(&self, id: i64) -> Result<String, Error> {
@@ -173,17 +163,13 @@ pub async fn get_user_by_name(conn: &mut Connection<DbConn>, name: String) -> Re
 // }
 
 pub async fn get_user_name(conn: &mut Connection<DbConn>, id: i64) -> Result<String, Error> {
-    let user = sqlx::query_as!(
-        User,
-        "select * from users where id = $1",
-        id
-    )
-    .fetch_optional(&mut ***conn)
-    .await;
+    let user = sqlx::query_as!(User, "select * from users where id = $1", id)
+        .fetch_optional(&mut ***conn)
+        .await;
 
     match user {
-        Ok(x) => return Ok(x.unwrap().username),
-        Err(x) => return Err(x),
+        Ok(x) => Ok(x.unwrap().username),
+        Err(x) => Err(x),
     }
 }
 
@@ -191,13 +177,16 @@ pub async fn get_user_name(conn: &mut Connection<DbConn>, id: i64) -> Result<Str
 pub async fn insert_user(conn: &mut Connection<DbConn>, user: User) -> Result<i64, Error> {
     let result = sqlx::query!(
         "INSERT INTO users(username, nickname, password) VALUES($1, $2, $3) RETURNING id",
-        user.username, user.nickname, user.password
-    ).fetch_one(&mut ***conn)
+        user.username,
+        user.nickname,
+        user.password
+    )
+    .fetch_one(&mut ***conn)
     .await;
 
     match result {
-        Ok(x) => return Ok(x.id),
-        Err(x) => return Err(x),
+        Ok(x) => Ok(x.id),
+        Err(x) => Err(x),
     }
 }
 
@@ -211,17 +200,13 @@ pub async fn insert_user(conn: &mut Connection<DbConn>, user: User) -> Result<i6
 // }
 
 pub async fn has_user(conn: &mut PgConnection, name: String) -> Result<bool, Error> {
-    let user = sqlx::query_as!(
-        User,
-        "select * from users where username = $1",
-        name
-    )
-    .fetch_optional(conn)
-    .await;
+    let user = sqlx::query_as!(User, "select * from users where username = $1", name)
+        .fetch_optional(conn)
+        .await;
 
     match user {
-        Ok(x) => {return Ok(x.is_some());},
-        Err(x) => {return Err(x);}
+        Ok(x) => Ok(x.is_some()),
+        Err(x) => Err(x),
     }
 }
 
@@ -230,18 +215,17 @@ pub async fn has_user(conn: &mut PgConnection, name: String) -> Result<bool, Err
 //     e.is_ok()
 // }
 
-pub async fn get_msg_by_id(conn: &mut Connection<DbConn>, id: i64) -> Result<Option<Message>, Error> {
-    let user = sqlx::query_as!(
-        Message,
-        "select * from messages where id = $1",
-        id
-    )
-    .fetch_optional(&mut ***conn)
-    .await;
+pub async fn get_msg_by_id(
+    conn: &mut Connection<DbConn>,
+    id: i64,
+) -> Result<Option<Message>, Error> {
+    let user = sqlx::query_as!(Message, "select * from messages where id = $1", id)
+        .fetch_optional(&mut ***conn)
+        .await;
 
     match user {
-        Ok(x) => return Ok(x),
-        Err(x) => return Err(x),
+        Ok(x) => Ok(x),
+        Err(x) => Err(x),
     }
 }
 
@@ -265,11 +249,18 @@ pub async fn send_message(conn: &mut Connection<DbConn>, message: Message) -> Re
 
     match result {
         Ok(x) => {
-            let _y = create_channel_event(conn, channel_id, server_id, timestamp, RoomEventType::NewMessage(x.id)).await;
+            let _y = create_channel_event(
+                conn,
+                channel_id,
+                server_id,
+                timestamp,
+                RoomEventType::NewMessage(x.id),
+            )
+            .await;
 
-            return Ok(x.id)
-        },
-        Err(x) => return Err(x),
+            Ok(x.id)
+        }
+        Err(x) => Err(x),
     }
 }
 
@@ -277,12 +268,13 @@ pub async fn get_community_members(
     conn: &mut Connection<DbConn>,
     server_id: i64,
 ) -> Result<Vec<ServerMember>, Error> {
-
     let mut val = sqlx::query_as!(
         ServerMember,
         "SELECT * FROM community_members WHERE server_id = $1",
         server_id
-    ).fetch_all(&mut ***conn).await;
+    )
+    .fetch_all(&mut ***conn)
+    .await;
 
     match &mut val {
         Ok(y) => {
@@ -337,13 +329,13 @@ pub async fn get_user_communities(
     conn: &mut Connection<DbConn>,
     uid: i64,
 ) -> Result<Vec<ServerMember>, Error> {
-    let a = sqlx::query_as!(
+    sqlx::query_as!(
         ServerMember,
         "SELECT * FROM community_members WHERE userid = $1",
         uid
-    ).fetch_all(&mut ***conn).await;
-
-    a
+    )
+    .fetch_all(&mut ***conn)
+    .await
 }
 
 // pub async fn get_user_communities(
@@ -358,18 +350,14 @@ pub async fn get_user_communities(
 //     .await
 // }
 
-/// gets all rooms in a community 
+/// gets all rooms in a community
 pub async fn get_community_rooms(
     conn: &mut Connection<DbConn>,
     server_id: i64,
 ) -> Result<Vec<Room>, Error> {
-    let a = sqlx::query_as!(
-        Room,
-        "SELECT * FROM rooms WHERE server = $1",
-        server_id
-    ).fetch_all(&mut ***conn).await;
-
-    a
+    sqlx::query_as!(Room, "SELECT * FROM rooms WHERE server = $1", server_id)
+        .fetch_all(&mut ***conn)
+        .await
 }
 
 // pub async fn get_community_rooms(
@@ -456,7 +444,6 @@ pub async fn get_room_events_since_timestamp_and_id(
     id: i64,
     amount: i64,
 ) -> Result<Vec<RoomEvent>, Error> {
-
     let mut a = sqlx::query_as!(
         RoomEvent,
         "SELECT * FROM room_events WHERE channel_id = $1 AND timestamp >= $2 AND id != $3 ORDER BY timestamp DESC LIMIT $4",
@@ -560,7 +547,7 @@ pub async fn get_events_prior(
 //     val
 // }
 
-/// get the latest n events in a room, good for first opening a room 
+/// get the latest n events in a room, good for first opening a room
 pub async fn get_room_events(
     conn: &mut Connection<DbConn>,
     channel_id: i64,
@@ -569,8 +556,11 @@ pub async fn get_room_events(
     let mut a = sqlx::query_as!(
         RoomEvent,
         "SELECT * FROM room_events WHERE channel_id = $1 ORDER BY timestamp DESC LIMIT $2",
-        channel_id, amount
-    ).fetch_all(&mut ***conn).await;
+        channel_id,
+        amount
+    )
+    .fetch_all(&mut ***conn)
+    .await;
 
     match &mut a {
         Ok(x) => {
