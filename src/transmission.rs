@@ -19,8 +19,8 @@ pub struct TransmissionCommunity {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum InsertError {
-    Success(usize),
+pub enum InsertResult {
+    Success(i64),
     UsernameTaken,
     DbError,
     InvalidPassword,
@@ -186,7 +186,7 @@ pub enum TransmissionType {
     InvalidTransmission,
     RequestAuth,
     AuthResult(AuthErr),
-    CreateUserResult(InsertError),
+    CreateUserResult(InsertResult),
     ServerInfo(ServerInfoData),
     UserCommunities(Vec<TransmissionCommunity>),
     JoinServerResult(JoinServerResult),

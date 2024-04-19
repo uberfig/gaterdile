@@ -1,7 +1,7 @@
 use crate::{db::{DbConn, get_msg_by_id}, db_types::Message, transmission};
 // use diesel::result::Error;
 // use serde::{Deserialize, Serialize};
-use rocket_db_pools::{Connection, Database};
+use rocket_db_pools::Connection;
 use sqlx::Error;
 
 // #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
@@ -58,7 +58,7 @@ impl RoomEvent {
     pub fn is_message(&self) -> bool {
         self.event_type == 0
     }
-    pub async fn get_message(self, conn: &Connection<DbConn>) -> Message {
+    pub async fn get_message(self, conn: &mut Connection<DbConn>) -> Message {
         get_msg_by_id(
             conn,
             self.message
@@ -69,7 +69,7 @@ impl RoomEvent {
     }
     pub async fn get_concrete(
         self,
-        conn: &Connection<DbConn>,
+        conn: &mut Connection<DbConn>,
     ) -> Result<transmission::ChannelEvent, Error> {
         let evt_type = self.to_event_type();
         match evt_type {
@@ -96,7 +96,7 @@ impl RoomEvent {
             RoomEventType::Error => todo!(),
         }
     }
-    pub async fn get_concrete_unwrap(self, conn: &Connection<DbConn>) -> transmission::ChannelEvent {
+    pub async fn get_concrete_unwrap(self, conn: &mut Connection<DbConn>) -> transmission::ChannelEvent {
         self.get_concrete(conn).await.unwrap()
     }
 }

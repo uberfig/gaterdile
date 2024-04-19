@@ -1,21 +1,21 @@
 use crate::{
     db::{
-        get_room_events, get_community_members, get_community_rooms, get_events_prior,
-        get_msg_by_id, get_room_events_since_timestamp_and_id, send_message, join_community, DbConn, User,
+        get_community_members, get_community_rooms, get_events_prior, get_msg_by_id,
+        get_room_events, get_room_events_since_timestamp_and_id, join_community, send_message,
+        DbConn, User,
     },
-    db_event_types::RoomEvent,
+    // db_event_types::RoomEvent,
     db_types::{Message, Room, ServerMember},
     transmission::{
-        AuthErr, InsertError, NewTransmissionMessage, ServerInfoData, Transmission,
+        AuthErr, ChannelEvent, InsertResult, NewTransmissionMessage, ServerInfoData, Transmission,
         TransmissionType, UserAuth,
     },
 };
-use rocket::futures;
+// use rocket::futures;
 // use rocket::tokio::join;
-use rocket_ws as ws;
 use rocket_db_pools::Connection;
-use sqlx::PgConnection;
-
+use rocket_ws as ws;
+// use sqlx::PgConnection;
 
 #[derive(Debug)]
 pub struct ConnectionProps {
@@ -27,9 +27,9 @@ pub struct ConnectionProps {
     pub last_sent_id: Option<i64>,
 }
 
-async fn create_user(conn: &mut Connection<DbConn>, user: UserAuth) -> InsertError {
+async fn create_user(conn: &mut Connection<DbConn>, user: UserAuth) -> InsertResult {
     if user.username.is_empty() {
-        return InsertError::InvalidUsername;
+        return InsertResult::InvalidUsername;
     }
 
     User::insert(user, conn).await
@@ -72,13 +72,13 @@ pub async fn fetch_new_events(
     let x = props.last_sent_timestamp.unwrap();
 
     let since = get_room_events_since_timestamp_and_id(
-            conn,
-            props.listening_channel.unwrap(),
-            x,
-            props.last_sent_id.unwrap(),
-            10,
-        )
-        .await;
+        conn,
+        props.listening_channel.unwrap(),
+        x,
+        props.last_sent_id.unwrap(),
+        10,
+    )
+    .await;
 
     match since {
         Ok(since) => {
@@ -94,11 +94,19 @@ pub async fn fetch_new_events(
                     props.last_sent_timestamp = Some(y.timestamp);
                     props.last_sent_id = Some(y.id.unwrap());
 
-                    let messages = since
-                        .into_iter()
-                        .filter(RoomEvent::is_message)
-                        .map(|y| y.get_concrete_unwrap(conn));
-                    let messages = futures::future::join_all(messages).await;
+                    // let messages = since
+                    //     .into_iter()
+                    //     .filter(RoomEvent::is_message)
+                    //     .map(|y| y.get_concrete_unwrap(conn));
+                    // let messages = futures::future::join_all(messages).await;
+
+                    let mut messages: Vec<ChannelEvent> = Vec::with_capacity(since.len());
+                    for i in since.into_iter() {
+                        if i.is_message() {
+                            messages.push(i.get_concrete_unwrap(conn).await);
+                        }
+                    }
+
                     let _ = TransmissionType::ChannelEvent(messages)
                         .wrap_into_transmission()
                         .send(stream)
@@ -171,7 +179,7 @@ pub async fn handle_create_user(
 ) {
     let err = create_user(conn, x).await;
     match err {
-        InsertError::Success(x) => {
+        InsertResult::Success(x) => {
             props.authenticated = true;
             props.uid = x.try_into().unwrap();
         }
@@ -211,11 +219,18 @@ pub async fn handle_get_channel(
                 // println!("no messages")
             }
         }
-        let messages = x
-            .into_iter()
-            .filter(RoomEvent::is_message)
-            .map(|y| y.get_concrete_unwrap(conn));
-        let messages = futures::future::join_all(messages).await;
+        // let messages = x
+        //     .into_iter()
+        //     .filter(RoomEvent::is_message)
+        //     .map(|y| y.get_concrete_unwrap(conn));
+        // let messages = futures::future::join_all(messages).await;
+
+        let mut messages: Vec<ChannelEvent> = Vec::with_capacity(x.len());
+        for i in x.into_iter() {
+            if i.is_message() {
+                messages.push(i.get_concrete_unwrap(conn).await);
+            }
+        }
 
         let _ = TransmissionType::ChannelEvent(messages)
             .wrap_into_transmission()
@@ -252,11 +267,19 @@ pub async fn handle_get_prior(
                 .send(stream)
                 .await;
         } else {
-            let messages = x
-                .into_iter()
-                .filter(RoomEvent::is_message)
-                .map(|y| y.get_concrete_unwrap(conn));
-            let messages = futures::future::join_all(messages).await;
+            // let messages = x
+            //     .into_iter()
+            //     .filter(RoomEvent::is_message)
+            //     .map(|y| y.get_concrete_unwrap(conn));
+            // let messages = futures::future::join_all(messages).await;
+
+            let mut messages: Vec<ChannelEvent> = Vec::with_capacity(x.len());
+            for i in x.into_iter() {
+                if i.is_message() {
+                    messages.push(i.get_concrete_unwrap(conn).await);
+                }
+            }
+
             let _ = TransmissionType::PriorMessages(messages)
                 .wrap_into_transmission()
                 .send(stream)

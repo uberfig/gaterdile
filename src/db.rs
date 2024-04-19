@@ -4,7 +4,7 @@ use crate::{
     db_event_types::{RoomEvent, RoomEventType},
     db_types::{Message, Room, ServerMember},
     // schema::db_schema::{self, community_members, room_events, rooms},
-    transmission::{AuthErr, InsertError, JoinServerResult, UserAuth},
+    transmission::{AuthErr, InsertResult, JoinServerResult, UserAuth},
 };
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
@@ -30,13 +30,13 @@ pub struct User {
 }
 
 impl User {
-    pub async fn insert(new_user: UserAuth, conn: &mut Connection<DbConn>) -> InsertError {
+    pub async fn insert(new_user: UserAuth, conn: &mut Connection<DbConn>) -> InsertResult {
         let result = has_user(&mut ***conn, new_user.username.clone()).await;
         if result.is_err() {
-            return InsertError::DbError;
+            return InsertResult::DbError;
         }
         if result.unwrap() {
-            return InsertError::UsernameTaken;
+            return InsertResult::UsernameTaken;
         }
 
         let salt = SaltString::generate(&mut OsRng);
@@ -44,7 +44,7 @@ impl User {
         let password_hash = argon2.hash_password(new_user.password.as_bytes(), &salt);
 
         if password_hash.is_err() {
-            return InsertError::InvalidPassword;
+            return InsertResult::InvalidPassword;
         }
 
         let pass = password_hash.unwrap().to_string();
@@ -56,13 +56,13 @@ impl User {
             password: pass,
         };
 
-        let e = insert_user(&mut ***conn, t).await;
+        let e = insert_user(conn, t).await;
         match e {
-            Ok(x) => {return InsertError::Success(x);},
+            Ok(x) => {return InsertResult::Success(x);},
             Err(_x) => {
                 println!("insert");
                 dbg!(_x);
-                return InsertError::DbError;
+                return InsertResult::DbError;
             }
         };
     }
@@ -172,12 +172,33 @@ pub async fn get_user_by_name(conn: &mut Connection<DbConn>, name: String) -> Re
 //     Ok(user.username)
 // }
 
-pub async fn get_user_name(conn: &Connection<DbConn>, id: i64) -> Result<String, Error> {
-    todo!()
+pub async fn get_user_name(conn: &mut Connection<DbConn>, id: i64) -> Result<String, Error> {
+    let user = sqlx::query_as!(
+        User,
+        "select * from users where id = $1",
+        id
+    )
+    .fetch_optional(&mut ***conn)
+    .await;
+
+    match user {
+        Ok(x) => return Ok(x.unwrap().username),
+        Err(x) => return Err(x),
+    }
 }
 
-pub async fn insert_user(conn: &mut PgConnection, user: User) -> Result<usize, Error> {
-    todo!()
+/// inserts a user and returns their id
+pub async fn insert_user(conn: &mut Connection<DbConn>, user: User) -> Result<i64, Error> {
+    let result = sqlx::query!(
+        "INSERT INTO users(username, nickname, password) VALUES($1, $2, $3) RETURNING id",
+        user.username, user.nickname, user.password
+    ).fetch_one(&mut ***conn)
+    .await;
+
+    match result {
+        Ok(x) => return Ok(x.id),
+        Err(x) => return Err(x),
+    }
 }
 
 // pub async fn insert_user(&self, user: User) -> Result<usize, Error> {
@@ -209,8 +230,19 @@ pub async fn has_user(conn: &mut PgConnection, name: String) -> Result<bool, Err
 //     e.is_ok()
 // }
 
-pub async fn get_msg_by_id(conn: &Connection<DbConn>, id: i64) -> Result<Message, Error> {
-    todo!()
+pub async fn get_msg_by_id(conn: &mut Connection<DbConn>, id: i64) -> Result<Message, Error> {
+    let user = sqlx::query_as!(
+        Message,
+        "select * from messages where id = $1",
+        id
+    )
+    .fetch_optional(&mut ***conn)
+    .await;
+
+    match user {
+        Ok(x) => return Ok(x.expect("getting message by an id that doesn't exist")),
+        Err(x) => return Err(x),
+    }
 }
 
 // pub async fn get_msg_by_id(&self, id: i64) -> Result<Message, Error> {

@@ -38,7 +38,7 @@ pub struct Message {
 impl Message {}
 
 impl Message {
-    pub async fn to_transmission(self, conn: &Connection<DbConn>) -> TransmissionMessage {
+    pub async fn to_transmission(self, conn: &mut Connection<DbConn>) -> TransmissionMessage {
         match self.reply {
             Some(x) => {
                 let mut reply_uid = -1;
