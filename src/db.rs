@@ -1,17 +1,19 @@
+// use std::fmt::Display;
+
 use crate::{
     db_event_types::{RoomEvent, RoomEventType},
     db_types::{Message, Room, ServerMember},
-    schema::db_schema::{self, community_members, room_events, rooms},
-    transmission::{AuthErr, InsertError, JoinServerResult, UserAuth},
+    // schema::db_schema::{self, community_members, room_events, rooms},
+    transmission::{AuthErr, InsertResult, JoinServerResult, UserAuth},
 };
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-use rocket::serde::Deserialize;
+// use rocket::serde::Deserialize;
+// use rocket_db_pools::{Connection, Database};
+use rocket_db_pools::Connection;
 
-#[derive(Deserialize, Queryable, Insertable, Debug)]
-#[diesel(table_name = db_schema::users)]
 pub struct User {
     pub id: Option<i64>,
     pub username: String,
@@ -20,9 +22,13 @@ pub struct User {
 }
 
 impl User {
-    pub async fn insert(new_user: UserAuth, conn: &DbConn) -> InsertError {
-        if conn.has_user(new_user.username.clone()).await {
-            return InsertError::UsernameTaken;
+    pub async fn insert(new_user: UserAuth, conn: &mut Connection<DbConn>) -> InsertResult {
+        let result = has_user(&mut ***conn, new_user.username.clone()).await;
+        if result.is_err() {
+            return InsertResult::DbError;
+        }
+        if result.unwrap() {
+            return InsertResult::UsernameTaken;
         }
 
         let salt = SaltString::generate(&mut OsRng);
@@ -30,7 +36,7 @@ impl User {
         let password_hash = argon2.hash_password(new_user.password.as_bytes(), &salt);
 
         if password_hash.is_err() {
-            return InsertError::InvalidPassword;
+            return InsertResult::InvalidPassword;
         }
 
         let pass = password_hash.unwrap().to_string();
@@ -42,25 +48,28 @@ impl User {
             password: pass,
         };
 
-        let e = conn.insert_user(t).await;
+        let e = insert_user(conn, t).await;
         match e {
-            Ok(x) => InsertError::Success(x),
+            Ok(x) => {
+                return InsertResult::Success(x);
+            }
             Err(_x) => {
                 println!("insert");
                 dbg!(_x);
-                InsertError::DbError
+                return InsertResult::DbError;
             }
-        }
+        };
     }
 
-    pub async fn auth(user: UserAuth, conn: &DbConn) -> AuthErr {
-        let e = conn.get_user_by_name(user.username).await;
+    pub async fn auth(user: UserAuth, conn: &mut Connection<DbConn>) -> AuthErr {
+        let e = get_user_by_name(conn, user.username).await;
+        let query = e.unwrap();
 
-        if e.is_err() {
+        if query.is_none() {
             return AuthErr::InvalidUsername;
         }
 
-        let query = e.unwrap();
+        let query = query.unwrap();
 
         let password_hash = PasswordHash::new(&query.password).unwrap();
         let verified = Argon2::default().verify_password(user.password.as_bytes(), &password_hash);
@@ -72,298 +81,306 @@ impl User {
     }
 }
 
-#[database("diesel")]
-pub struct DbConn(diesel::PgConnection);
-use db_schema::{
-    // messages::{self, channel},
-    messages::{self},
-    // messages::self,
-    // usernames, users,
-    users,
-};
-use diesel::{prelude::*, result::Error, sql_types::Integer};
+#[derive(rocket_db_pools::Database)]
+#[database("sqlx")]
+pub struct DbConn(sqlx::PgPool);
 
-#[derive(QueryableByName)]
-pub struct InsertedRowId {
-    #[diesel(sql_type = Integer)]
-    pub id: i32,
-}
+use rocket_db_pools::Initializer;
+use sqlx::{Error, PgConnection};
 
 impl DbConn {
-    pub async fn get_user_by_id(&self, id: i64) -> Result<User, Error> {
-        let user: User = self
-            .run(move |conn| users::table.filter(users::id.eq(id)).first(conn))
-            .await?;
-        Ok(user)
+    pub fn init() -> Initializer<Self> {
+        Initializer::new()
     }
+}
 
-    pub async fn get_user_by_name(&self, name: String) -> Result<User, Error> {
-        let user: User = self
-            .run(move |conn| users::table.filter(users::username.eq(name)).first(conn))
-            .await?;
-        Ok(user)
-    }
-
-    pub async fn get_user_name(&self, id: i64) -> Result<String, Error> {
-        let user: User = self
-            .run(move |conn| {
-                db_schema::users::table
-                    .filter(db_schema::users::id.eq(id))
-                    .first(conn)
-            })
-            .await?;
-        Ok(user.username)
-    }
-
-    pub async fn insert_user(&self, user: User) -> Result<usize, Error> {
-        self.run(move |c| {
-            diesel::insert_into(db_schema::users::table)
-                .values(user)
-                .execute(c)
-        })
+pub async fn get_user_by_id(conn: &mut Connection<DbConn>, id: i64) -> Result<Option<User>, Error> {
+    sqlx::query_as!(User, "select * from users where id = $1", id)
+        .fetch_optional(&mut ***conn)
         .await
+}
+
+pub async fn get_user_by_name(
+    conn: &mut Connection<DbConn>,
+    name: String,
+) -> Result<Option<User>, Error> {
+    sqlx::query_as!(User, "select * from users where username = $1", name)
+        .fetch_optional(&mut ***conn)
+        .await
+}
+
+pub async fn get_user_name(conn: &mut Connection<DbConn>, id: i64) -> Result<String, Error> {
+    let user = sqlx::query_as!(User, "select * from users where id = $1", id)
+        .fetch_optional(&mut ***conn)
+        .await;
+
+    match user {
+        Ok(x) => Ok(x.unwrap().username),
+        Err(x) => Err(x),
     }
+}
 
-    pub async fn has_user(&self, name: String) -> bool {
-        let e = self.get_user_by_name(name).await;
-        e.is_ok()
+/// inserts a user and returns their id
+pub async fn insert_user(conn: &mut Connection<DbConn>, user: User) -> Result<i64, Error> {
+    let result = sqlx::query!(
+        "INSERT INTO users(username, nickname, password) VALUES($1, $2, $3) RETURNING id",
+        user.username,
+        user.nickname,
+        user.password
+    )
+    .fetch_one(&mut ***conn)
+    .await;
+
+    match result {
+        Ok(x) => Ok(x.id),
+        Err(x) => Err(x),
     }
+}
 
-    pub async fn get_msg_by_id(&self, id: i64) -> Result<Message, Error> {
-        let message: Message = self
-            .run(move |conn| messages::table.filter(messages::id.eq(id)).first(conn))
-            .await?;
-        Ok(message)
+// pub async fn insert_user(&self, user: User) -> Result<usize, Error> {
+//     self.run(move |c| {
+//         diesel::insert_into(db_schema::users::table)
+//             .values(user)
+//             .execute(c)
+//     })
+//     .await
+// }
+
+pub async fn has_user(conn: &mut PgConnection, name: String) -> Result<bool, Error> {
+    let user = sqlx::query_as!(User, "select * from users where username = $1", name)
+        .fetch_optional(conn)
+        .await;
+
+    match user {
+        Ok(x) => Ok(x.is_some()),
+        Err(x) => Err(x),
     }
+}
 
-    pub async fn send_message(&self, message: Message) -> Result<Message, diesel::result::Error> {
-        let timestamp = message.timestamp;
-        let channel_id = message.channel;
-        let server_id = message.server;
+// pub async fn has_user(&self, name: String) -> bool {
+//     let e = self.get_user_by_name(name).await;
+//     e.is_ok()
+// }
 
-        let err_t = self
-            .run(move |c| {
-                c.transaction(|c| {
-                    let _a = diesel::insert_into(db_schema::messages::table)
-                        .values(message)
-                        .get_result::<Message>(c);
-                    diesel::result::QueryResult::Ok(_a)
-                })
-            })
-            .await?;
+pub async fn get_msg_by_id(
+    conn: &mut Connection<DbConn>,
+    id: i64,
+) -> Result<Option<Message>, Error> {
+    let user = sqlx::query_as!(Message, "select * from messages where id = $1", id)
+        .fetch_optional(&mut ***conn)
+        .await;
 
-        match &err_t {
-            Ok(x) => {
-                println!("inserting {}", x.id.unwrap());
-                let y = self
-                    .create_channel_event(
-                        channel_id,
-                        server_id,
-                        timestamp,
-                        RoomEventType::NewMessage(x.id.unwrap()),
-                    )
-                    .await;
-                dbg!(&y);
-                let _restut = y.expect("unable to insert message event for new message");
-            }
-            Err(_) => todo!(),
-        }
-
-        err_t
-
-        // return Ok(1);
+    match user {
+        Ok(x) => Ok(x),
+        Err(x) => Err(x),
     }
+}
 
-    pub async fn get_community_members(
-        &self,
-        server_id: i64,
-    ) -> Result<Vec<ServerMember>, diesel::result::Error> {
-        let mut val = self
-            .run(move |conn| {
-                community_members::dsl::community_members
-                    .filter(community_members::dsl::server_id.eq(server_id))
-                    .load::<ServerMember>(conn)
-            })
+// pub async fn get_msg_by_id(&self, id: i64) -> Result<Message, Error> {
+//     let message: Message = self
+//         .run(move |conn| messages::table.filter(messages::id.eq(id)).first(conn))
+//         .await?;
+//     Ok(message)
+// }
+
+pub async fn send_message(conn: &mut Connection<DbConn>, message: Message) -> Result<i64, Error> {
+    let timestamp = message.timestamp;
+    let channel_id = message.channel;
+    let server_id = message.server;
+
+    let result = sqlx::query!(
+        "INSERT INTO messages(sender, server, channel, reply, is_reply, text, timestamp) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+        message.sender, message.server, message.channel, message.reply, message.is_reply, message.text, message.timestamp
+    ).fetch_one(&mut ***conn)
+    .await;
+
+    match result {
+        Ok(x) => {
+            let _y = create_channel_event(
+                conn,
+                channel_id,
+                server_id,
+                timestamp,
+                RoomEventType::NewMessage(x.id),
+            )
             .await;
 
-        match &mut val {
-            Ok(y) => {
-                for member in y {
-                    if member.nickname.is_none() {
-                        let uname = self.get_user_name(member.userid).await;
-                        member.nickname = Some(uname.unwrap_or("unable to fetch".to_string()));
-                    }
+            return Ok(x.id)
+        },
+        Err(x) => return Err(x),
+    }
+}
+
+pub async fn get_community_members(
+    conn: &mut Connection<DbConn>,
+    server_id: i64,
+) -> Result<Vec<ServerMember>, Error> {
+    let mut val = sqlx::query_as!(
+        ServerMember,
+        "SELECT * FROM community_members WHERE server_id = $1",
+        server_id
+    )
+    .fetch_all(&mut ***conn)
+    .await;
+
+    match &mut val {
+        Ok(y) => {
+            for member in y {
+                if member.nickname.is_none() {
+                    let uname = get_user_name(conn, member.userid).await;
+                    member.nickname = Some(uname.unwrap_or("unable to fetch".to_string()));
                 }
             }
-            Err(x) => {
-                println!("err in get server members");
-                dbg!(&x);
-            }
         }
-
-        val
-    }
-
-    //gets all servers a user is a part of
-    pub async fn get_user_communities(
-        &self,
-        uid: i64,
-    ) -> Result<Vec<ServerMember>, diesel::result::Error> {
-        self.run(move |conn| {
-            community_members::dsl::community_members
-                .filter(community_members::dsl::userid.eq(uid))
-                .load::<ServerMember>(conn)
-        })
-        .await
-    }
-
-    pub async fn get_community_rooms(
-        &self,
-        server_id: i64,
-    ) -> Result<Vec<Room>, diesel::result::Error> {
-        self.run(move |conn| {
-            rooms::dsl::rooms
-                .filter(rooms::dsl::server.eq(server_id))
-                .load::<Room>(conn)
-        })
-        .await
-    }
-
-    pub async fn join_community(
-        &self,
-        server_id: i64,
-        userid: i64,
-        nickname: Option<String>,
-    ) -> JoinServerResult {
-        let message: ServerMember = ServerMember {
-            server_id,
-            userid,
-            nickname,
-        };
-        let e = self
-            .run(move |c| {
-                diesel::insert_into(db_schema::community_members::table)
-                    .values(message)
-                    .execute(c)
-            })
-            .await;
-
-        match e {
-            Ok(x) => JoinServerResult::Success(x.try_into().unwrap()),
-            Err(x) => {
-                dbg!(x);
-                JoinServerResult::AlreadyInServer
-            }
+        Err(x) => {
+            println!("err in get server members");
+            dbg!(&x);
         }
     }
 
-    pub async fn create_channel_event(
-        &self,
-        channel_id: i64,
-        server_id: i64,
-        timestamp: i64,
-        event_type: RoomEventType,
-    ) -> Result<usize, diesel::result::Error> {
-        let event = event_type.to_event(channel_id, server_id, timestamp);
+    val
+}
 
-        self.run(move |c| {
-            diesel::insert_into(db_schema::room_events::table)
-                .values(event)
-                .execute(c)
-        })
-        .await
+/// gets all servers a user is a part of
+pub async fn get_user_communities(
+    conn: &mut Connection<DbConn>,
+    uid: i64,
+) -> Result<Vec<ServerMember>, Error> {
+    sqlx::query_as!(
+        ServerMember,
+        "SELECT * FROM community_members WHERE userid = $1",
+        uid
+    ).fetch_all(&mut ***conn).await
+}
+
+/// gets all rooms in a community
+pub async fn get_community_rooms(
+    conn: &mut Connection<DbConn>,
+    server_id: i64,
+) -> Result<Vec<Room>, Error> {
+    let a = sqlx::query_as!(
+        Room,
+        "SELECT * FROM rooms WHERE server = $1",
+        server_id
+    ).fetch_all(&mut ***conn).await;
+
+    a
+}
+
+pub async fn join_community(
+    conn: &mut Connection<DbConn>,
+    server_id: i64,
+    userid: i64,
+    nickname: Option<String>,
+) -> JoinServerResult {
+    let message: ServerMember = ServerMember {
+        server_id,
+        userid,
+        nickname,
+    };
+
+    let _result = sqlx::query!(
+        "INSERT INTO community_members(server_id, userid, nickname) VALUES($1, $2, $3)",
+        message.server_id,
+        message.userid,
+        message.nickname
+    )
+    .fetch_one(&mut ***conn)
+    .await;
+
+    JoinServerResult::Success(server_id)
+}
+
+pub async fn create_channel_event(
+    conn: &mut Connection<DbConn>,
+    channel_id: i64,
+    server_id: i64,
+    timestamp: i64,
+    event_type: RoomEventType,
+) -> Result<i64, Error> {
+    let event = event_type.to_event(channel_id, server_id, timestamp);
+
+    let result = sqlx::query!(
+        "INSERT INTO room_events(channel_id, server_id, timestamp, event_type, message, reaction, creator, deleted) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+        event.channel_id, event.server_id, event.timestamp, event.event_type, event.message, event.reaction, event.creator, event.deleted
+    ).fetch_one(&mut ***conn)
+    .await;
+
+    match result {
+        Ok(x) => return Ok(x.id),
+        Err(x) => return Err(x),
     }
+}
 
-    pub async fn get_room_events_since_timestamp_and_id(
-        &self,
-        channel_id: i64,
-        since: i64,
-        id: i64,
-        amount: i64,
-    ) -> Result<Vec<RoomEvent>, diesel::result::Error> {
-        let mut a = self
-            .run(move |conn| {
-                room_events::dsl::room_events
-                    .filter(room_events::dsl::channel_id.eq(channel_id))
-                    .filter(room_events::dsl::timestamp.ge(since))
-                    .order(room_events::dsl::timestamp.desc())
-                    .limit(amount)
-                    .filter(room_events::dsl::id.ne(id))
-                    .load::<RoomEvent>(conn)
-            })
-            .await;
+/// gets all events in a room that have happened after the provided timestamp excluding the message with the provided id
+pub async fn get_room_events_since_timestamp_and_id(
+    conn: &mut Connection<DbConn>,
+    channel_id: i64,
+    since: i64,
+    id: i64,
+    amount: i64,
+) -> Result<Vec<RoomEvent>, Error> {
+    let mut a = sqlx::query_as!(
+        RoomEvent,
+        "SELECT * FROM room_events WHERE channel_id = $1 AND timestamp >= $2 AND id != $3 ORDER BY timestamp DESC LIMIT $4",
+        channel_id, since, id, amount
+    ).fetch_all(&mut ***conn).await;
 
-        match &mut a {
-            Ok(x) => {
-                x.sort_unstable_by_key(|y| y.timestamp);
-            }
-            Err(_) => {}
+    match &mut a {
+        Ok(x) => {
+            x.sort_unstable_by_key(|y| y.timestamp);
         }
-
-        a
+        Err(_) => {}
     }
 
-    pub async fn get_events_prior(
-        &self,
-        // server_id: i32,
-        channel_id: i64,
-        prior_to: i64,
-        last_msg: i64,
-        amount: i64,
-    ) -> Result<Vec<RoomEvent>, Error> {
-        let mut val = self
-            .run(move |conn| {
-                room_events::dsl::room_events
-                    // .filter(messages::dsl::server.eq(server_id))
-                    .filter(room_events::dsl::channel_id.eq(channel_id))
-                    .filter(room_events::dsl::timestamp.le(prior_to))
-                    .filter(room_events::dsl::id.ne(last_msg))
-                    .order(room_events::dsl::timestamp.asc())
-                    .limit(amount)
-                    // .order(messages::dsl::id.desc())
-                    // .order(messages::dsl::timestamp.asc())
-                    .load::<RoomEvent>(conn)
-                // .order(messages::dsl::timestamp.asc())
-            })
-            .await;
+    a
+}
 
-        match &mut val {
-            Ok(x) => {
-                x.sort_unstable_by_key(|y| y.timestamp);
-            }
-            Err(_) => {}
+/// get events that happened prior to a given event
+pub async fn get_events_prior(
+    conn: &mut Connection<DbConn>,
+    channel_id: i64,
+    prior_to: i64,
+    last_msg: i64,
+    amount: i64,
+) -> Result<Vec<RoomEvent>, Error> {
+    let mut a = sqlx::query_as!(
+        RoomEvent,
+        "SELECT * FROM room_events WHERE channel_id = $1 AND timestamp <= $2 AND id != $3 ORDER BY timestamp ASC LIMIT $4",
+        channel_id, prior_to, last_msg, amount
+    ).fetch_all(&mut ***conn).await;
+
+    match &mut a {
+        Ok(x) => {
+            x.sort_unstable_by_key(|y| y.timestamp);
         }
-
-        val
+        Err(_) => {}
     }
 
-    pub async fn get_channel_events(
-        &self,
-        // server_id: i32,
-        channel_id: i64,
-        amount: i64,
-    ) -> Result<Vec<RoomEvent>, Error> {
-        let mut val = self
-            .run(move |conn| {
-                room_events::dsl::room_events
-                    // .filter(messages::dsl::server.eq(server_id))
-                    .filter(room_events::dsl::channel_id.eq(channel_id))
-                    .order(room_events::dsl::timestamp.desc())
-                    .limit(amount)
-                    // .order(messages::dsl::id.desc())
-                    // .order(messages::dsl::timestamp.asc())
-                    .load::<RoomEvent>(conn)
-                // .order(messages::dsl::timestamp.asc())
-            })
-            .await;
+    a
+}
 
-        match &mut val {
-            Ok(x) => {
-                x.sort_unstable_by_key(|y| y.timestamp);
-            }
-            Err(_) => {}
+/// get the latest n events in a room, good for first opening a room
+pub async fn get_room_events(
+    conn: &mut Connection<DbConn>,
+    channel_id: i64,
+    amount: i64,
+) -> Result<Vec<RoomEvent>, Error> {
+    let mut a = sqlx::query_as!(
+        RoomEvent,
+        "SELECT * FROM room_events WHERE channel_id = $1 ORDER BY timestamp DESC LIMIT $2",
+        channel_id,
+        amount
+    )
+    .fetch_all(&mut ***conn)
+    .await;
+
+    match &mut a {
+        Ok(x) => {
+            x.sort_unstable_by_key(|y| y.timestamp);
         }
-
-        val
+        Err(_) => {}
     }
+
+    a
 }

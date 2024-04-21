@@ -1,21 +1,22 @@
+-- Add migration script here
 CREATE TABLE users (
 	id 			BIGSERIAL PRIMARY KEY NOT NULL,
 	username	TEXT NOT NULL UNIQUE,
 	nickname	TEXT,
-	password	TEXT
+	password	TEXT NOT NULL
 );
 
 CREATE TABLE communities (
 	id			BIGSERIAL PRIMARY KEY NOT NULL,
-	nickname	TEXT,
-	owner		BIGINT NOT NULL REFERENCES users(id),
+	nickname	TEXT NOT NULL,
+	owner		BIGINT REFERENCES users(id) ON DELETE SET NULL,
 	is_public	BOOLEAN NOT NULL
 );
 
 CREATE TABLE rooms (
 	id			BIGSERIAL PRIMARY KEY NOT NULL,
 	server		BIGINT NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
-	name		TEXT
+	name		TEXT NOT NULL
 );
 
 CREATE TABLE attachments (
@@ -33,8 +34,8 @@ CREATE TABLE messages (
 	channel		BIGINT NOT NULL,
 	reply		BIGINT REFERENCES messages(id) ON DELETE SET NULL,
 	is_reply 	BOOLEAN NOT NULL,
-	text		TEXT,
-	timestamp	BIGINT
+	text		TEXT NOT NULL,
+	timestamp	BIGINT NOT NULL
 );
 
 CREATE TABLE reactions (

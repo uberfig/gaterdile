@@ -3,7 +3,7 @@
 #![type_length_limit = "4096"]
 #[macro_use]
 extern crate rocket;
-
+use rocket::Shutdown;
 use std::time::Duration;
 
 use gaterdile::handlers::{
@@ -12,6 +12,7 @@ use gaterdile::handlers::{
 };
 use gaterdile::transmission::{Transmission, TransmissionType};
 
+// use rocket::http::hyper::server::conn::Connection;
 use rocket::tokio;
 use rocket::tokio::time::interval;
 
@@ -19,32 +20,60 @@ use rocket::{
     fairing::AdHoc,
     fs::{relative, FileServer},
     Build, Rocket,
+    futures::{SinkExt, StreamExt},
+    tokio::{
+        select,
+    },
 };
 
 use gaterdile::db::DbConn;
+use rocket_db_pools::{Connection, Database};
 use rocket_ws as ws;
 
-async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
-    use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+// async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
+//     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
-    const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+//     const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
-    DbConn::get_one(&rocket)
-        .await
-        .expect("database connection")
-        .run(|conn| {
-            conn.run_pending_migrations(MIGRATIONS)
-                .expect("diesel migrations");
-        })
-        .await;
+//     DbConn::get_one(&rocket)
+//         .await
+//         .expect("database connection")
+//         .run(|conn| {
+//             conn.run_pending_migrations(MIGRATIONS)
+//                 .expect("diesel migrations");
+//         })
+//         .await;
 
-    rocket
+//     rocket
+// }
+use rocket::fairing;
+
+async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
+    match DbConn::fetch(&rocket) {
+        Some(db) => match sqlx::migrate!().run(&**db).await {
+            Ok(_) => Ok(rocket),
+            Err(e) => {
+                error!("Failed to initialize SQLx database: {}", e);
+                Err(rocket)
+            }
+        },
+        None => Err(rocket),
+    }
+}
+
+pub fn stage() -> AdHoc {
+    AdHoc::on_ignite("SQLx Stage", |rocket| async {
+        rocket
+            .attach(DbConn::init())
+            .attach(AdHoc::try_on_ignite("SQLx Migrations", run_migrations))
+        // .mount("/sqlx", routes![list, create, read, delete, destroy])
+    })
 }
 
 async fn handle_transmission(
     transmission: TransmissionType,
     props: &mut ConnectionProps,
-    conn: &DbConn,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     // use rocket::futures::SinkExt;
@@ -108,7 +137,7 @@ async fn handle_transmission(
 
 //with thanks to this issue I found online: https://stackoverflow.com/questions/77780189/how-to-detect-rust-rocket-ws-client-disconnected-from-websocket
 #[get("/ws")]
-pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> {
+pub fn message_channel(ws: ws::WebSocket, mut conn: Connection<DbConn>, shutdown: Shutdown) -> ws::Channel<'static> {
     use rocket::futures::StreamExt;
 
     ws.channel(move |mut stream: ws::stream::DuplexStream| {
@@ -118,17 +147,19 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
 
 			tokio::spawn(async move {
 				let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
-				// let _ = Transmission { data: TransmissionType::CreateRoom(1, "test".to_string()), transmission_type: TransmissionType::CreateRoom(1, "test".to_string()).to_string() }.send(&mut stream).await;
 
-                // let _ = TransmissionType::JoinCommunity(0).wrap_into_transmission().send(&mut stream).await;
 				loop {
+                    let shutdown = shutdown.clone();
 					tokio::select! {
 						_ = interval.tick() => {
 							// Send message every 10 seconds
 							if props.authenticated {
-								fetch_new_events(&mut props, &conn, &mut stream).await;
+								fetch_new_events(&mut props, &mut conn, &mut stream).await;
 							}
 						}
+                        _ = shutdown => {
+                            break
+                        }
 						Some(Ok(message)) = stream.next() => {
 							match message {
 								ws::Message::Text(text) => {
@@ -137,7 +168,7 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
 									let data = Transmission::parse(&text).unwrap_or(Transmission { data: TransmissionType::InvalidTransmission, transmission_type: "".to_string() });
 
                                     if props.authenticated || matches!(data.data, TransmissionType::Auth(..) | TransmissionType::CreateUser(..)) {
-                                        handle_transmission(data.data, &mut props, &conn, &mut stream).await;
+                                        handle_transmission(data.data, &mut props, &mut conn, &mut stream).await;
                                     } else {
                                         let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
                                     }
@@ -192,9 +223,10 @@ pub fn message_channel(ws: ws::WebSocket, conn: DbConn) -> ws::Channel<'static> 
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .attach(DbConn::fairing())
+        // .attach(DbConn::fairing())
         // .attach(Template::fairing())
-        .attach(AdHoc::on_ignite("Run Migrations", run_migrations))
+        .attach(stage())
+        // .attach(AdHoc::on_ignite("Run Migrations", run_migrations))
         .mount("/", FileServer::from(relative!("client/static")))
         .mount("/", routes![message_channel])
 }

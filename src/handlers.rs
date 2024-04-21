@@ -1,15 +1,21 @@
 use crate::{
-    db::{DbConn, User},
-    db_event_types::RoomEvent,
+    db::{
+        get_community_members, get_community_rooms, get_events_prior, get_msg_by_id,
+        get_room_events, get_room_events_since_timestamp_and_id, join_community, send_message,
+        DbConn, User,
+    },
+    // db_event_types::RoomEvent,
     db_types::{Message, Room, ServerMember},
     transmission::{
-        AuthErr, InsertError, NewTransmissionMessage, ServerInfoData, Transmission,
+        AuthErr, ChannelEvent, InsertResult, NewTransmissionMessage, ServerInfoData, Transmission,
         TransmissionType, UserAuth,
     },
 };
-use rocket::futures;
-use rocket::tokio::join;
+// use rocket::futures;
+// use rocket::tokio::join;
+use rocket_db_pools::Connection;
 use rocket_ws as ws;
+// use sqlx::PgConnection;
 
 #[derive(Debug)]
 pub struct ConnectionProps {
@@ -21,15 +27,15 @@ pub struct ConnectionProps {
     pub last_sent_id: Option<i64>,
 }
 
-async fn create_user(conn: &DbConn, user: UserAuth) -> InsertError {
+async fn create_user(conn: &mut Connection<DbConn>, user: UserAuth) -> InsertResult {
     if user.username.is_empty() {
-        return InsertError::InvalidUsername;
+        return InsertResult::InvalidUsername;
     }
 
     User::insert(user, conn).await
 }
 
-async fn auth_user(conn: &DbConn, user: UserAuth) -> AuthErr {
+async fn auth_user(conn: &mut Connection<DbConn>, user: UserAuth) -> AuthErr {
     if user.username.is_empty() {
         return AuthErr::InvalidUsername;
     }
@@ -38,12 +44,10 @@ async fn auth_user(conn: &DbConn, user: UserAuth) -> AuthErr {
 
 pub async fn fetch_new_events(
     props: &mut ConnectionProps,
-    conn: &DbConn,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     //----------------get user events----------------
-
-
 
     //--------------get community events-------------
 
@@ -67,14 +71,14 @@ pub async fn fetch_new_events(
 
     let x = props.last_sent_timestamp.unwrap();
 
-    let since = conn
-        .get_room_events_since_timestamp_and_id(
-            props.listening_channel.unwrap(),
-            x,
-            props.last_sent_id.unwrap(),
-            10,
-        )
-        .await;
+    let since = get_room_events_since_timestamp_and_id(
+        conn,
+        props.listening_channel.unwrap(),
+        x,
+        props.last_sent_id.unwrap(),
+        10,
+    )
+    .await;
 
     match since {
         Ok(since) => {
@@ -90,11 +94,19 @@ pub async fn fetch_new_events(
                     props.last_sent_timestamp = Some(y.timestamp);
                     props.last_sent_id = Some(y.id.unwrap());
 
-                    let messages = since
-                        .into_iter()
-                        .filter(RoomEvent::is_message)
-                        .map(|y| y.get_concrete_unwrap(conn));
-                    let messages = futures::future::join_all(messages).await;
+                    // let messages = since
+                    //     .into_iter()
+                    //     .filter(RoomEvent::is_message)
+                    //     .map(|y| y.get_concrete_unwrap(conn));
+                    // let messages = futures::future::join_all(messages).await;
+
+                    let mut messages: Vec<ChannelEvent> = Vec::with_capacity(since.len());
+                    for i in since.into_iter() {
+                        if i.is_message() {
+                            messages.push(i.get_concrete_unwrap(conn).await);
+                        }
+                    }
+
                     let _ = TransmissionType::ChannelEvent(messages)
                         .wrap_into_transmission()
                         .send(stream)
@@ -112,7 +124,7 @@ pub async fn fetch_new_events(
 pub async fn handle_send_message(
     t_msg: NewTransmissionMessage,
     props: &mut ConnectionProps,
-    conn: &DbConn,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     if t_msg.text.trim().is_empty() {
@@ -127,7 +139,7 @@ pub async fn handle_send_message(
     props.listening_channel = Some(props.listening_server.unwrap_or(t_msg.channel));
 
     let message = Message::from_newmsg(t_msg, props.uid);
-    let _x = conn.send_message(message).await;
+    let _x = send_message(conn, message).await;
 
     fetch_new_events(props, conn, stream).await;
 }
@@ -135,7 +147,7 @@ pub async fn handle_send_message(
 pub async fn handle_auth(
     user: UserAuth,
     props: &mut ConnectionProps,
-    conn: &DbConn,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     let auth = auth_user(conn, user).await;
@@ -162,12 +174,12 @@ pub async fn handle_auth(
 pub async fn handle_create_user(
     x: UserAuth,
     props: &mut ConnectionProps,
-    conn: &DbConn,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     let err = create_user(conn, x).await;
     match err {
-        InsertError::Success(x) => {
+        InsertResult::Success(x) => {
             props.authenticated = true;
             props.uid = x.try_into().unwrap();
         }
@@ -186,10 +198,10 @@ pub async fn handle_get_channel(
     server_id: i64,
     channel_id: i64,
     props: &mut ConnectionProps,
-    conn: &DbConn,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let a = conn.get_channel_events(channel_id, 40).await;
+    let a = get_room_events(conn, channel_id, 40).await;
 
     if let Ok(x) = a {
         props.listening_channel = Some(channel_id);
@@ -207,11 +219,18 @@ pub async fn handle_get_channel(
                 // println!("no messages")
             }
         }
-        let messages = x
-            .into_iter()
-            .filter(RoomEvent::is_message)
-            .map(|y| y.get_concrete_unwrap(conn));
-        let messages = futures::future::join_all(messages).await;
+        // let messages = x
+        //     .into_iter()
+        //     .filter(RoomEvent::is_message)
+        //     .map(|y| y.get_concrete_unwrap(conn));
+        // let messages = futures::future::join_all(messages).await;
+
+        let mut messages: Vec<ChannelEvent> = Vec::with_capacity(x.len());
+        for i in x.into_iter() {
+            if i.is_message() {
+                messages.push(i.get_concrete_unwrap(conn).await);
+            }
+        }
 
         let _ = TransmissionType::ChannelEvent(messages)
             .wrap_into_transmission()
@@ -222,14 +241,14 @@ pub async fn handle_get_channel(
 
 pub async fn handle_get_prior(
     channel_id: i64,
-    conn: &DbConn,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
     last_msg: i64,
 ) {
-    let msg = conn.get_msg_by_id(last_msg).await;
+    let msg = get_msg_by_id(conn, last_msg).await;
 
     let message = match msg {
-        Ok(x) => x,
+        Ok(x) => x.unwrap(),
         Err(_) => {
             let _ = TransmissionType::InvalidTransmission
                 .wrap_into_transmission()
@@ -239,9 +258,7 @@ pub async fn handle_get_prior(
         }
     };
 
-    let a = conn
-        .get_events_prior(channel_id, message.timestamp, last_msg, 40)
-        .await;
+    let a = get_events_prior(conn, channel_id, message.timestamp, last_msg, 40).await;
 
     if let Ok(x) = a {
         if x.is_empty() {
@@ -250,11 +267,19 @@ pub async fn handle_get_prior(
                 .send(stream)
                 .await;
         } else {
-            let messages = x
-                .into_iter()
-                .filter(RoomEvent::is_message)
-                .map(|y| y.get_concrete_unwrap(conn));
-            let messages = futures::future::join_all(messages).await;
+            // let messages = x
+            //     .into_iter()
+            //     .filter(RoomEvent::is_message)
+            //     .map(|y| y.get_concrete_unwrap(conn));
+            // let messages = futures::future::join_all(messages).await;
+
+            let mut messages: Vec<ChannelEvent> = Vec::with_capacity(x.len());
+            for i in x.into_iter() {
+                if i.is_message() {
+                    messages.push(i.get_concrete_unwrap(conn).await);
+                }
+            }
+
             let _ = TransmissionType::PriorMessages(messages)
                 .wrap_into_transmission()
                 .send(stream)
@@ -265,12 +290,12 @@ pub async fn handle_get_prior(
 
 pub async fn handle_get_server(
     server_id: i64,
-    conn: &DbConn,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let members_fut = conn.get_community_members(server_id);
-    let channels_fut = conn.get_community_rooms(server_id);
-    let (members, channels) = join!(members_fut, channels_fut);
+    let members = get_community_members(conn, server_id).await;
+    let channels = get_community_rooms(conn, server_id).await;
+    // let (members, channels) = join!(members_fut, channels_fut);
     let members = members
         .unwrap_or(vec![])
         .into_iter()
@@ -294,10 +319,10 @@ pub async fn handle_get_server(
 pub async fn handle_join_server(
     server_id: i64,
     userid: i64,
-    conn: &DbConn,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    let a = conn.join_community(server_id, userid, None).await;
+    let a = join_community(conn, server_id, userid, None).await;
     let _ = TransmissionType::JoinServerResult(a)
         .wrap_into_transmission()
         .send(stream)

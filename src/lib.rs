@@ -1,10 +1,10 @@
 #![recursion_limit = "2048"]
 #![type_length_limit = "2048"]
 
-#[macro_use]
-extern crate diesel;
-#[macro_use]
-extern crate rocket_sync_db_pools;
+// #[macro_use]
+// extern crate diesel;
+// #[macro_use]
+// extern crate rocket_sync_db_pools;
 
 pub mod db;
 pub mod db_event_types;

@@ -1,9 +1,15 @@
-use crate::{db::DbConn, db_types::Message, schema::db_schema, transmission};
-use diesel::result::Error;
-use serde::{Deserialize, Serialize};
+use crate::{
+    db::{get_msg_by_id, DbConn},
+    db_types::Message,
+    transmission,
+};
+// use diesel::result::Error;
+// use serde::{Deserialize, Serialize};
+use rocket_db_pools::Connection;
+use sqlx::Error;
 
-#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = db_schema::room_events)]
+// #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
+// #[diesel(table_name = db_schema::room_events)]
 pub struct RoomEvent {
     pub id: Option<i64>,
     pub channel_id: i64,
@@ -56,23 +62,28 @@ impl RoomEvent {
     pub fn is_message(&self) -> bool {
         self.event_type == 0
     }
-    pub async fn get_message(self, conn: &DbConn) -> Message {
-        conn.get_msg_by_id(
+    pub async fn get_message(self, conn: &mut Connection<DbConn>) -> Message {
+        get_msg_by_id(
+            conn,
             self.message
                 .expect("tried to get message when msg id is none"),
         )
         .await
         .unwrap()
+        .unwrap()
     }
-    pub async fn get_concrete(self, conn: &DbConn) -> Result<transmission::ChannelEvent, Error> {
+    pub async fn get_concrete(
+        self,
+        conn: &mut Connection<DbConn>,
+    ) -> Result<transmission::ChannelEvent, Error> {
         let evt_type = self.to_event_type();
         match evt_type {
             RoomEventType::NewMessage(x) => {
-                let msg = conn.get_msg_by_id(x).await;
+                let msg = get_msg_by_id(conn, x).await;
                 match msg {
                     Ok(y) => {
                         let evt = transmission::ChannelEventType::NewMessage(
-                            y.to_transmission(conn).await,
+                            y.unwrap().to_transmission(conn).await,
                         );
                         Ok(transmission::ChannelEvent {
                             event_type: evt.to_string(),
@@ -90,7 +101,10 @@ impl RoomEvent {
             RoomEventType::Error => todo!(),
         }
     }
-    pub async fn get_concrete_unwrap(self, conn: &DbConn) -> transmission::ChannelEvent {
+    pub async fn get_concrete_unwrap(
+        self,
+        conn: &mut Connection<DbConn>,
+    ) -> transmission::ChannelEvent {
         self.get_concrete(conn).await.unwrap()
     }
 }

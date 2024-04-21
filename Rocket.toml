@@ -1,8 +1,8 @@
-[default.databases.diesel]
+[default.databases.sqlx]
 url = "postgres://ivy:password@localhost/gaterdile_dev"
 timeout = 10
 
-[release.databases.diesel]
+[release.databases.sqlx]
 url = "postgres://username:password@localhost/gaterdile"
 
 # [development]

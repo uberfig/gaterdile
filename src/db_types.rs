@@ -1,28 +1,29 @@
 use crate::{
-    db::DbConn,
-    schema::db_schema,
+    db::{get_msg_by_id, DbConn},
+    // schema::db_schema,
     transmission::{
         NewTransmissionMessage, TransmissionChannel, TransmissionMessage, TransmissionServerMember,
     },
 };
+use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
 
 #[derive(
     Default,
     Deserialize,
-    Queryable,
-    Insertable,
+    // Queryable,
+    // Insertable,
     Debug,
     Serialize,
     Clone,
-    QueryableByName,
-    Identifiable,
-    Selectable,
+    // QueryableByName,
+    // Identifiable,
+    // Selectable,
 )]
-#[diesel(primary_key(id))]
-#[diesel(table_name = db_schema::messages)]
+// #[diesel(primary_key(id))]
+// #[diesel(table_name = db_schema::messages)]
 pub struct Message {
-    #[diesel(deserialize_as = Option<i64>)]
+    // #[diesel(deserialize_as = Option<i64>)]
     pub id: Option<i64>,
     pub sender: i64,
     pub server: i64,
@@ -36,12 +37,13 @@ pub struct Message {
 impl Message {}
 
 impl Message {
-    pub async fn to_transmission(self, conn: &DbConn) -> TransmissionMessage {
+    pub async fn to_transmission(self, conn: &mut Connection<DbConn>) -> TransmissionMessage {
         match self.reply {
             Some(x) => {
                 let mut reply_uid = -1;
-                let prev = match conn.get_msg_by_id(x).await {
+                let prev = match get_msg_by_id(conn, x).await {
                     Ok(x) => {
+                        let x = x.unwrap();
                         reply_uid = x.sender;
                         x.text
                     }
@@ -93,8 +95,8 @@ impl Message {
     }
 }
 
-#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = db_schema::community_members)]
+// #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
+// #[diesel(table_name = db_schema::community_members)]
 pub struct ServerMember {
     pub server_id: i64,
     pub userid: i64,
@@ -111,8 +113,8 @@ impl From<ServerMember> for TransmissionServerMember {
     }
 }
 
-#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = db_schema::communities)]
+// #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
+// #[diesel(table_name = db_schema::communities)]
 pub struct Community {
     id: Option<i64>,
     nickname: String,
@@ -120,8 +122,8 @@ pub struct Community {
     is_public: bool,
 }
 
-#[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-#[diesel(table_name = db_schema::rooms)]
+// #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
+// #[diesel(table_name = db_schema::rooms)]
 pub struct Room {
     pub id: Option<i64>,
     pub server: i64,
