@@ -14,16 +14,7 @@ use argon2::{
 // use rocket_db_pools::{Connection, Database};
 use rocket_db_pools::Connection;
 
-// use ormx::{Insert, Table, Delete};
-
-// #[derive(Deserialize, Queryable, Insertable, Debug)]
-// #[diesel(table_name = db_schema::users)]
-// #[derive(Debug, ormx::Table)]
-// #[ormx(table = "users", id = user_id, insertable, deletable)]
-// #[derive(Clone, Debug, PartialEq, DeriveEntity)]
-// #[sea_orm(table_name = "users")]
 pub struct User {
-    // #[sea_orm(primary_key)]
     pub id: Option<i64>,
     pub username: String,
     pub nickname: Option<String>,
@@ -62,9 +53,6 @@ impl User {
             Ok(x) => {
                 return InsertResult::Success(x);
             }
-            Ok(x) => {
-                return InsertResult::Success(x);
-            }
             Err(_x) => {
                 println!("insert");
                 dbg!(_x);
@@ -93,31 +81,11 @@ impl User {
     }
 }
 
-// use rocket_db_pools::{Database, Connection};
-
-// #[database("diesel")]
-// pub struct DbConn(diesel::PgConnection);
 #[derive(rocket_db_pools::Database)]
 #[database("sqlx")]
 pub struct DbConn(sqlx::PgPool);
 
-// use db_schema::{
-//     // messages::{self, channel},
-//     messages::{self},
-//     // messages::self,
-//     // usernames, users,
-//     users,
-// };
-// use diesel::{prelude::*, result::Error, sql_types::Integer};
-
-// #[derive(QueryableByName)]
-// pub struct InsertedRowId {
-//     #[diesel(sql_type = Integer)]
-//     pub id: i32,
-// }
-
 use rocket_db_pools::Initializer;
-// use sea_orm::{query, DeriveEntity, DeriveEntityModel};
 use sqlx::{Error, PgConnection};
 
 impl DbConn {
@@ -125,20 +93,6 @@ impl DbConn {
         Initializer::new()
     }
 }
-
-// impl DbConn {
-
-//     pub fn init() -> Initializer<Self> {
-//         Initializer::new()
-//     }
-
-// pub async fn get_user_by_id(&self, id: i64) -> Result<User, Error> {
-//     // let user: User = self
-//     //     .run(move |conn| users::table.filter(users::id.eq(id)).first(conn))
-//     //     .await?;
-//     let user: User = sqlx::query_as!(User, "SELECT DISTINCT FROM ");
-//     Ok(user)
-// }
 
 pub async fn get_user_by_id(conn: &mut Connection<DbConn>, id: i64) -> Result<Option<User>, Error> {
     sqlx::query_as!(User, "select * from users where id = $1", id)
@@ -154,17 +108,6 @@ pub async fn get_user_by_name(
         .fetch_optional(&mut ***conn)
         .await
 }
-
-// pub async fn get_user_name(&self, id: i64) -> Result<String, Error> {
-//     let user: User = self
-//         .run(move |conn| {
-//             db_schema::users::table
-//                 .filter(db_schema::users::id.eq(id))
-//                 .first(conn)
-//         })
-//         .await?;
-//     Ok(user.username)
-// }
 
 pub async fn get_user_name(conn: &mut Connection<DbConn>, id: i64) -> Result<String, Error> {
     let user = sqlx::query_as!(User, "select * from users where id = $1", id)
@@ -298,36 +241,6 @@ pub async fn get_community_members(
     val
 }
 
-// pub async fn get_community_members(
-//     &self,
-//     server_id: i64,
-// ) -> Result<Vec<ServerMember>, diesel::result::Error> {
-//     let mut val = self
-//         .run(move |conn| {
-//             community_members::dsl::community_members
-//                 .filter(community_members::dsl::server_id.eq(server_id))
-//                 .load::<ServerMember>(conn)
-//         })
-//         .await;
-
-//     match &mut val {
-//         Ok(y) => {
-//             for member in y {
-//                 if member.nickname.is_none() {
-//                     let uname = self.get_user_name(member.userid).await;
-//                     member.nickname = Some(uname.unwrap_or("unable to fetch".to_string()));
-//                 }
-//             }
-//         }
-//         Err(x) => {
-//             println!("err in get server members");
-//             dbg!(&x);
-//         }
-//     }
-
-//     val
-// }
-
 /// gets all servers a user is a part of
 pub async fn get_user_communities(
     conn: &mut Connection<DbConn>,
@@ -339,18 +252,6 @@ pub async fn get_user_communities(
         uid
     ).fetch_all(&mut ***conn).await
 }
-
-// pub async fn get_user_communities(
-//     &self,
-//     uid: i64,
-// ) -> Result<Vec<ServerMember>, diesel::result::Error> {
-//     self.run(move |conn| {
-//         community_members::dsl::community_members
-//             .filter(community_members::dsl::userid.eq(uid))
-//             .load::<ServerMember>(conn)
-//     })
-//     .await
-// }
 
 /// gets all rooms in a community
 pub async fn get_community_rooms(
@@ -365,18 +266,6 @@ pub async fn get_community_rooms(
 
     a
 }
-
-// pub async fn get_community_rooms(
-//     &self,
-//     server_id: i64,
-// ) -> Result<Vec<Room>, diesel::result::Error> {
-//     self.run(move |conn| {
-//         rooms::dsl::rooms
-//             .filter(rooms::dsl::server.eq(server_id))
-//             .load::<Room>(conn)
-//     })
-//     .await
-// }
 
 pub async fn join_community(
     conn: &mut Connection<DbConn>,
@@ -402,34 +291,6 @@ pub async fn join_community(
     JoinServerResult::Success(server_id)
 }
 
-// pub async fn join_community(
-//     &self,
-//     server_id: i64,
-//     userid: i64,
-//     nickname: Option<String>,
-// ) -> JoinServerResult {
-//     let message: ServerMember = ServerMember {
-//         server_id,
-//         userid,
-//         nickname,
-//     };
-//     let e = self
-//         .run(move |c| {
-//             diesel::insert_into(db_schema::community_members::table)
-//                 .values(message)
-//                 .execute(c)
-//         })
-//         .await;
-
-//     match e {
-//         Ok(x) => JoinServerResult::Success(x.try_into().unwrap()),
-//         Err(x) => {
-//             dbg!(x);
-//             JoinServerResult::AlreadyInServer
-//         }
-//     }
-// }
-
 pub async fn create_channel_event(
     conn: &mut Connection<DbConn>,
     channel_id: i64,
@@ -450,23 +311,6 @@ pub async fn create_channel_event(
         Err(x) => return Err(x),
     }
 }
-
-// pub async fn create_channel_event(
-//     &self,
-//     channel_id: i64,
-//     server_id: i64,
-//     timestamp: i64,
-//     event_type: RoomEventType,
-// ) -> Result<usize, diesel::result::Error> {
-//     let event = event_type.to_event(channel_id, server_id, timestamp);
-
-//     self.run(move |c| {
-//         diesel::insert_into(db_schema::room_events::table)
-//             .values(event)
-//             .execute(c)
-//     })
-//     .await
-// }
 
 /// gets all events in a room that have happened after the provided timestamp excluding the message with the provided id
 pub async fn get_room_events_since_timestamp_and_id(
@@ -492,35 +336,6 @@ pub async fn get_room_events_since_timestamp_and_id(
     a
 }
 
-// pub async fn get_room_events_since_timestamp_and_id(
-//     &self,
-//     channel_id: i64,
-//     since: i64,
-//     id: i64,
-//     amount: i64,
-// ) -> Result<Vec<RoomEvent>, diesel::result::Error> {
-//     let mut a = self
-//         .run(move |conn| {
-//             room_events::dsl::room_events
-//                 .filter(room_events::dsl::channel_id.eq(channel_id))
-//                 .filter(room_events::dsl::timestamp.ge(since))
-//                 .order(room_events::dsl::timestamp.desc())
-//                 .limit(amount)
-//                 .filter(room_events::dsl::id.ne(id))
-//                 .load::<RoomEvent>(conn)
-//         })
-//         .await;
-
-//     match &mut a {
-//         Ok(x) => {
-//             x.sort_unstable_by_key(|y| y.timestamp);
-//         }
-//         Err(_) => {}
-//     }
-
-//     a
-// }
-
 /// get events that happened prior to a given event
 pub async fn get_events_prior(
     conn: &mut Connection<DbConn>,
@@ -544,40 +359,6 @@ pub async fn get_events_prior(
 
     a
 }
-
-// pub async fn get_events_prior(
-//     &self,
-//     // server_id: i32,
-//     channel_id: i64,
-//     prior_to: i64,
-//     last_msg: i64,
-//     amount: i64,
-// ) -> Result<Vec<RoomEvent>, Error> {
-//     let mut val = self
-//         .run(move |conn| {
-//             room_events::dsl::room_events
-//                 // .filter(messages::dsl::server.eq(server_id))
-//                 .filter(room_events::dsl::channel_id.eq(channel_id))
-//                 .filter(room_events::dsl::timestamp.le(prior_to))
-//                 .filter(room_events::dsl::id.ne(last_msg))
-//                 .order(room_events::dsl::timestamp.asc())
-//                 .limit(amount)
-//                 // .order(messages::dsl::id.desc())
-//                 // .order(messages::dsl::timestamp.asc())
-//                 .load::<RoomEvent>(conn)
-//             // .order(messages::dsl::timestamp.asc())
-//         })
-//         .await;
-
-//     match &mut val {
-//         Ok(x) => {
-//             x.sort_unstable_by_key(|y| y.timestamp);
-//         }
-//         Err(_) => {}
-//     }
-
-//     val
-// }
 
 /// get the latest n events in a room, good for first opening a room
 pub async fn get_room_events(
@@ -603,34 +384,3 @@ pub async fn get_room_events(
 
     a
 }
-
-// pub async fn get_channel_events(
-//     &self,
-//     // server_id: i32,
-//     channel_id: i64,
-//     amount: i64,
-// ) -> Result<Vec<RoomEvent>, Error> {
-//     let mut val = self
-//         .run(move |conn| {
-//             room_events::dsl::room_events
-//                 // .filter(messages::dsl::server.eq(server_id))
-//                 .filter(room_events::dsl::channel_id.eq(channel_id))
-//                 .order(room_events::dsl::timestamp.desc())
-//                 .limit(amount)
-//                 // .order(messages::dsl::id.desc())
-//                 // .order(messages::dsl::timestamp.asc())
-//                 .load::<RoomEvent>(conn)
-//             // .order(messages::dsl::timestamp.asc())
-//         })
-//         .await;
-
-//     match &mut val {
-//         Ok(x) => {
-//             x.sort_unstable_by_key(|y| y.timestamp);
-//         }
-//         Err(_) => {}
-//     }
-
-//     val
-// }
-// }
