@@ -1,4 +1,4 @@
-use std::fmt::Display;
+// use std::fmt::Display;
 
 use crate::{
     db_event_types::{RoomEvent, RoomEventType},
@@ -11,7 +11,8 @@ use argon2::{
     Argon2,
 };
 // use rocket::serde::Deserialize;
-use rocket_db_pools::{Connection, Database};
+// use rocket_db_pools::{Connection, Database};
+use rocket_db_pools::Connection;
 
 // use ormx::{Insert, Table, Delete};
 
@@ -58,6 +59,9 @@ impl User {
 
         let e = insert_user(conn, t).await;
         match e {
+            Ok(x) => {
+                return InsertResult::Success(x);
+            }
             Ok(x) => {
                 return InsertResult::Success(x);
             }
@@ -258,9 +262,9 @@ pub async fn send_message(conn: &mut Connection<DbConn>, message: Message) -> Re
             )
             .await;
 
-            Ok(x.id)
-        }
-        Err(x) => Err(x),
+            return Ok(x.id)
+        },
+        Err(x) => return Err(x),
     }
 }
 
@@ -333,9 +337,7 @@ pub async fn get_user_communities(
         ServerMember,
         "SELECT * FROM community_members WHERE userid = $1",
         uid
-    )
-    .fetch_all(&mut ***conn)
-    .await
+    ).fetch_all(&mut ***conn).await
 }
 
 // pub async fn get_user_communities(
@@ -355,9 +357,13 @@ pub async fn get_community_rooms(
     conn: &mut Connection<DbConn>,
     server_id: i64,
 ) -> Result<Vec<Room>, Error> {
-    sqlx::query_as!(Room, "SELECT * FROM rooms WHERE server = $1", server_id)
-        .fetch_all(&mut ***conn)
-        .await
+    let a = sqlx::query_as!(
+        Room,
+        "SELECT * FROM rooms WHERE server = $1",
+        server_id
+    ).fetch_all(&mut ***conn).await;
+
+    a
 }
 
 // pub async fn get_community_rooms(
@@ -373,12 +379,27 @@ pub async fn get_community_rooms(
 // }
 
 pub async fn join_community(
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     server_id: i64,
     userid: i64,
     nickname: Option<String>,
 ) -> JoinServerResult {
-    todo!()
+    let message: ServerMember = ServerMember {
+        server_id,
+        userid,
+        nickname,
+    };
+
+    let _result = sqlx::query!(
+        "INSERT INTO community_members(server_id, userid, nickname) VALUES($1, $2, $3)",
+        message.server_id,
+        message.userid,
+        message.nickname
+    )
+    .fetch_one(&mut ***conn)
+    .await;
+
+    JoinServerResult::Success(server_id)
 }
 
 // pub async fn join_community(
@@ -410,13 +431,24 @@ pub async fn join_community(
 // }
 
 pub async fn create_channel_event(
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     channel_id: i64,
     server_id: i64,
     timestamp: i64,
     event_type: RoomEventType,
 ) -> Result<i64, Error> {
-    todo!()
+    let event = event_type.to_event(channel_id, server_id, timestamp);
+
+    let result = sqlx::query!(
+        "INSERT INTO room_events(channel_id, server_id, timestamp, event_type, message, reaction, creator, deleted) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+        event.channel_id, event.server_id, event.timestamp, event.event_type, event.message, event.reaction, event.creator, event.deleted
+    ).fetch_one(&mut ***conn)
+    .await;
+
+    match result {
+        Ok(x) => return Ok(x.id),
+        Err(x) => return Err(x),
+    }
 }
 
 // pub async fn create_channel_event(

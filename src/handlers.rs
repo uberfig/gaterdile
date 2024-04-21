@@ -319,7 +319,7 @@ pub async fn handle_get_server(
 pub async fn handle_join_server(
     server_id: i64,
     userid: i64,
-    conn: &Connection<DbConn>,
+    conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
     let a = join_community(conn, server_id, userid, None).await;
