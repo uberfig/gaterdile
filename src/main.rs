@@ -12,7 +12,6 @@ use gaterdile::handlers::{
 };
 use gaterdile::transmission::{Transmission, TransmissionType};
 
-// use rocket::http::hyper::server::conn::Connection;
 use rocket::tokio;
 use rocket::tokio::time::interval;
 
@@ -20,32 +19,11 @@ use rocket::{
     fairing::AdHoc,
     fs::{relative, FileServer},
     Build, Rocket,
-    futures::{SinkExt, StreamExt},
-    tokio::{
-        select,
-    },
 };
 
 use gaterdile::db::DbConn;
 use rocket_db_pools::{Connection, Database};
 use rocket_ws as ws;
-
-// async fn run_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
-//     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-
-//     const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
-
-//     DbConn::get_one(&rocket)
-//         .await
-//         .expect("database connection")
-//         .run(|conn| {
-//             conn.run_pending_migrations(MIGRATIONS)
-//                 .expect("diesel migrations");
-//         })
-//         .await;
-
-//     rocket
-// }
 use rocket::fairing;
 
 async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
