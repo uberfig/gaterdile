@@ -3,7 +3,7 @@
 #![type_length_limit = "4096"]
 #[macro_use]
 extern crate rocket;
-
+use rocket::Shutdown;
 use std::time::Duration;
 
 use gaterdile::handlers::{
@@ -20,6 +20,10 @@ use rocket::{
     fairing::AdHoc,
     fs::{relative, FileServer},
     Build, Rocket,
+    futures::{SinkExt, StreamExt},
+    tokio::{
+        select,
+    },
 };
 
 use gaterdile::db::DbConn;
@@ -133,7 +137,7 @@ async fn handle_transmission(
 
 //with thanks to this issue I found online: https://stackoverflow.com/questions/77780189/how-to-detect-rust-rocket-ws-client-disconnected-from-websocket
 #[get("/ws")]
-pub fn message_channel(ws: ws::WebSocket, mut conn: Connection<DbConn>) -> ws::Channel<'static> {
+pub fn message_channel(ws: ws::WebSocket, mut conn: Connection<DbConn>, shutdown: Shutdown) -> ws::Channel<'static> {
     use rocket::futures::StreamExt;
 
     ws.channel(move |mut stream: ws::stream::DuplexStream| {
@@ -145,6 +149,7 @@ pub fn message_channel(ws: ws::WebSocket, mut conn: Connection<DbConn>) -> ws::C
 				let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
 
 				loop {
+                    let shutdown = shutdown.clone();
 					tokio::select! {
 						_ = interval.tick() => {
 							// Send message every 10 seconds
@@ -152,6 +157,9 @@ pub fn message_channel(ws: ws::WebSocket, mut conn: Connection<DbConn>) -> ws::C
 								fetch_new_events(&mut props, &mut conn, &mut stream).await;
 							}
 						}
+                        _ = shutdown => {
+                            break
+                        }
 						Some(Ok(message)) = stream.next() => {
 							match message {
 								ws::Message::Text(text) => {
