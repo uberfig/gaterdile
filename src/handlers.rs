@@ -94,12 +94,6 @@ pub async fn fetch_new_events(
                     props.last_sent_timestamp = Some(y.timestamp);
                     props.last_sent_id = Some(y.id.unwrap());
 
-                    // let messages = since
-                    //     .into_iter()
-                    //     .filter(RoomEvent::is_message)
-                    //     .map(|y| y.get_concrete_unwrap(conn));
-                    // let messages = futures::future::join_all(messages).await;
-
                     let mut messages: Vec<ChannelEvent> = Vec::with_capacity(since.len());
                     for i in since.into_iter() {
                         if i.is_message() {
@@ -219,12 +213,6 @@ pub async fn handle_get_channel(
                 // println!("no messages")
             }
         }
-        // let messages = x
-        //     .into_iter()
-        //     .filter(RoomEvent::is_message)
-        //     .map(|y| y.get_concrete_unwrap(conn));
-        // let messages = futures::future::join_all(messages).await;
-
         let mut messages: Vec<ChannelEvent> = Vec::with_capacity(x.len());
         for i in x.into_iter() {
             if i.is_message() {
@@ -267,12 +255,6 @@ pub async fn handle_get_prior(
                 .send(stream)
                 .await;
         } else {
-            // let messages = x
-            //     .into_iter()
-            //     .filter(RoomEvent::is_message)
-            //     .map(|y| y.get_concrete_unwrap(conn));
-            // let messages = futures::future::join_all(messages).await;
-
             let mut messages: Vec<ChannelEvent> = Vec::with_capacity(x.len());
             for i in x.into_iter() {
                 if i.is_message() {

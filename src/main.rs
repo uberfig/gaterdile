@@ -22,9 +22,9 @@ use rocket::{
 };
 
 use gaterdile::db::DbConn;
+use rocket::fairing;
 use rocket_db_pools::{Connection, Database};
 use rocket_ws as ws;
-use rocket::fairing;
 
 async fn run_migrations(rocket: Rocket<Build>) -> fairing::Result {
     match DbConn::fetch(&rocket) {
@@ -72,7 +72,7 @@ async fn handle_transmission(
         }
 
         //------------community management----------
-        TransmissionType::CreateCommunity(_) => {
+        TransmissionType::CreateCommunity(name) => {
             todo!()
         }
         TransmissionType::JoinCommunity(server_id) => {
@@ -115,7 +115,11 @@ async fn handle_transmission(
 
 //with thanks to this issue I found online: https://stackoverflow.com/questions/77780189/how-to-detect-rust-rocket-ws-client-disconnected-from-websocket
 #[get("/ws")]
-pub fn message_channel(ws: ws::WebSocket, mut conn: Connection<DbConn>, shutdown: Shutdown) -> ws::Channel<'static> {
+pub fn message_channel(
+    ws: ws::WebSocket,
+    mut conn: Connection<DbConn>,
+    shutdown: Shutdown,
+) -> ws::Channel<'static> {
     use rocket::futures::StreamExt;
 
     ws.channel(move |mut stream: ws::stream::DuplexStream| {

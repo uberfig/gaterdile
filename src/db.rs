@@ -205,8 +205,8 @@ pub async fn send_message(conn: &mut Connection<DbConn>, message: Message) -> Re
             )
             .await;
 
-            return Ok(x.id)
-        },
+            return Ok(x.id);
+        }
         Err(x) => return Err(x),
     }
 }
@@ -250,7 +250,9 @@ pub async fn get_user_communities(
         ServerMember,
         "SELECT * FROM community_members WHERE userid = $1",
         uid
-    ).fetch_all(&mut ***conn).await
+    )
+    .fetch_all(&mut ***conn)
+    .await
 }
 
 /// gets all rooms in a community
@@ -258,11 +260,9 @@ pub async fn get_community_rooms(
     conn: &mut Connection<DbConn>,
     server_id: i64,
 ) -> Result<Vec<Room>, Error> {
-    let a = sqlx::query_as!(
-        Room,
-        "SELECT * FROM rooms WHERE server = $1",
-        server_id
-    ).fetch_all(&mut ***conn).await;
+    let a = sqlx::query_as!(Room, "SELECT * FROM rooms WHERE server = $1", server_id)
+        .fetch_all(&mut ***conn)
+        .await;
 
     a
 }
