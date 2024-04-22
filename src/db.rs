@@ -364,6 +364,7 @@ pub async fn get_room_events(
     a
 }
 
+/// returns the community id
 pub async fn create_community(
     conn: &mut Connection<DbConn>,
     creator: i64,
@@ -375,10 +376,18 @@ pub async fn create_community(
     ).fetch_one(&mut ***conn)
     .await;
 
+    let id;
     match result {
-        Ok(x) => Ok(x.id),
-        Err(x) => Err(x),
+        Ok(x) => id = x.id,
+        Err(x) => return Err(x),
     }
+
+    //it is ok to ignore this as it is not a critical error if the general room failed to be created because of a disconnect to the db
+    //if a user were to create a community and right before this line the connection breaks it would simply create a community with no rooms
+    //and the user could just create a general room manually once the database has been fixed
+    let _result = create_room(conn, creator, id, "general".to_string()).await;
+
+    return Ok(id);
 }
 
 pub async fn is_admin(
