@@ -116,10 +116,10 @@ impl From<ServerMember> for TransmissionServerMember {
 // #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
 // #[diesel(table_name = db_schema::communities)]
 pub struct Community {
-    id: Option<i64>,
-    nickname: String,
-    owner: i64,
-    is_public: bool,
+    pub id: Option<i64>,
+    pub nickname: String,
+    pub owner: i64,
+    pub is_public: bool,
 }
 
 // #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]

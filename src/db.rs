@@ -2,7 +2,7 @@
 
 use crate::{
     db_event_types::{RoomEvent, RoomEventType},
-    db_types::{Message, Room, ServerMember},
+    db_types::{Community, Message, Room, ServerMember},
     // schema::db_schema::{self, community_members, room_events, rooms},
     transmission::{AuthErr, InsertResult, JoinServerResult, UserAuth},
 };
@@ -137,15 +137,6 @@ pub async fn insert_user(conn: &mut Connection<DbConn>, user: User) -> Result<i6
     }
 }
 
-// pub async fn insert_user(&self, user: User) -> Result<usize, Error> {
-//     self.run(move |c| {
-//         diesel::insert_into(db_schema::users::table)
-//             .values(user)
-//             .execute(c)
-//     })
-//     .await
-// }
-
 pub async fn has_user(conn: &mut PgConnection, name: String) -> Result<bool, Error> {
     let user = sqlx::query_as!(User, "select * from users where username = $1", name)
         .fetch_optional(conn)
@@ -156,11 +147,6 @@ pub async fn has_user(conn: &mut PgConnection, name: String) -> Result<bool, Err
         Err(x) => Err(x),
     }
 }
-
-// pub async fn has_user(&self, name: String) -> bool {
-//     let e = self.get_user_by_name(name).await;
-//     e.is_ok()
-// }
 
 pub async fn get_msg_by_id(
     conn: &mut Connection<DbConn>,
@@ -175,13 +161,6 @@ pub async fn get_msg_by_id(
         Err(x) => Err(x),
     }
 }
-
-// pub async fn get_msg_by_id(&self, id: i64) -> Result<Message, Error> {
-//     let message: Message = self
-//         .run(move |conn| messages::table.filter(messages::id.eq(id)).first(conn))
-//         .await?;
-//     Ok(message)
-// }
 
 pub async fn send_message(conn: &mut Connection<DbConn>, message: Message) -> Result<i64, Error> {
     let timestamp = message.timestamp;
@@ -383,4 +362,80 @@ pub async fn get_room_events(
     }
 
     a
+}
+
+pub async fn create_community(
+    conn: &mut Connection<DbConn>,
+    creator: i64,
+    name: String,
+) -> Result<i64, Error> {
+    let result = sqlx::query!(
+        "INSERT INTO communities(nickname, owner, is_public) VALUES($1, $2, $3) RETURNING id",
+        name, creator, false
+    ).fetch_one(&mut ***conn)
+    .await;
+
+    match result {
+        Ok(x) => Ok(x.id),
+        Err(x) => Err(x),
+    }
+}
+
+pub async fn is_admin(
+    conn: &mut Connection<DbConn>,
+    userid: i64,
+    community: i64,
+) -> bool {
+    let mut a = sqlx::query!(
+        "SELECT owner as id FROM communities WHERE id = $1",
+        community
+    )
+    .fetch_optional(&mut ***conn)
+    .await;
+
+    match a {
+        Ok(x) => {
+            if x.is_some_and(|x| x.id == Some(userid)) {
+                return true;
+            }
+        },
+        Err(x) => {},
+    }
+
+    let mut a = sqlx::query!(
+        "SELECT * FROM roles JOIN role_members on roles.id = role_members.roleid WHERE community = $1 AND is_admin = true AND userid = $2 LIMIT 1",
+        community, userid
+    )
+    .fetch_optional(&mut ***conn)
+    .await;
+
+    match a {
+        Ok(x) => {
+            if x.is_some() {
+                return true;
+            }
+        },
+        Err(_x) => {},
+    }
+
+    return false;
+}
+
+pub enum CreateRoomResult {
+    Success(i64),
+    Failure,
+    NotAuthorised,
+}
+pub async fn create_room(
+    conn: &mut Connection<DbConn>,
+    creator: i64,
+    community: i64,
+    name: String,
+) -> Result<CreateRoomResult, Error> {
+    let admin = is_admin(conn, creator, community).await;
+    if !admin {
+        return Ok(CreateRoomResult::NotAuthorised);
+    }
+
+    todo!()
 }

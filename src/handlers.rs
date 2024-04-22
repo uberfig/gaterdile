@@ -310,3 +310,12 @@ pub async fn handle_join_server(
         .send(stream)
         .await;
 }
+
+pub async fn handle_create_server(
+    name: String,
+    userid: i64,
+    conn: &mut Connection<DbConn>,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    
+}

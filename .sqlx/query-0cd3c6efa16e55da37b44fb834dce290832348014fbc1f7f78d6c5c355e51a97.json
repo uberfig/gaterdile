@@ -1,0 +1,73 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM room_events WHERE channel_id = $1 AND timestamp <= $2 AND id != $3 ORDER BY timestamp ASC LIMIT $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "channel_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "server_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "timestamp",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "event_type",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "message",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "reaction",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "creator",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "deleted",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "0cd3c6efa16e55da37b44fb834dce290832348014fbc1f7f78d6c5c355e51a97"
+}

@@ -7,3 +7,10 @@ sudo -u postgres psql -c "ALTER ROLE ivy WITH PASSWORD 'password';"
 
 dropdb gaterdile_dev
 createdb gaterdile_dev
+
+
+useful:
+cargo sqlx prepare
+sqlx database drop
+sqlx database create
+sqlx migrate run

@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select * from messages where id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "sender",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "server",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "channel",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "reply",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_reply",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "text",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "timestamp",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2c289f1d287b915f782bd6f485c7c384b3576dfdf9c5872ac08cebbd274828e5"
+}

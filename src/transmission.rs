@@ -148,6 +148,12 @@ impl std::fmt::Display for ChannelEventType {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum CreateCommunityResult {
+    Success(i64),
+    Failure,
+} 
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ServerEvent {
     event_type: String,
 }
@@ -190,6 +196,7 @@ pub enum TransmissionType {
     ServerInfo(ServerInfoData),
     UserCommunities(Vec<TransmissionCommunity>),
     JoinServerResult(JoinServerResult),
+    CreateCommunityResult(CreateCommunityResult),
     PriorMessages(Vec<ChannelEvent>),
     NoMorePrior,
 
@@ -226,6 +233,7 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::UserEvent(_) => write!(f, "UserEvent"),
             TransmissionType::CreateCommunity(_) => write!(f, "CreateCommunity"),
             TransmissionType::CreateRoom(..) => write!(f, "CreateRoom"),
+            TransmissionType::CreateCommunityResult(_) => write!(f, "CreateCommunityResult"),
         }
     }
 }

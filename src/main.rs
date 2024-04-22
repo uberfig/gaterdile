@@ -107,7 +107,8 @@ async fn handle_transmission(
         | TransmissionType::NoMorePrior
         | TransmissionType::ChannelEvent(_)
         | TransmissionType::ServerEvent(_)
-        | TransmissionType::UserEvent(_) => {
+        | TransmissionType::UserEvent(_) 
+        | TransmissionType::CreateCommunityResult(_) => {
             let _ = Transmission::invalid().send(stream).await;
         }
     }
