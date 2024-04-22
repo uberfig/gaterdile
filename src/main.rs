@@ -7,8 +7,7 @@ use rocket::Shutdown;
 use std::time::Duration;
 
 use gaterdile::handlers::{
-    fetch_new_events, handle_auth, handle_create_user, handle_get_channel, handle_get_prior,
-    handle_get_server, handle_join_server, handle_send_message, ConnectionProps,
+    fetch_new_events, handle_auth, handle_create_community, handle_create_user, handle_get_channel, handle_get_prior, handle_get_server, handle_join_community, handle_send_message, ConnectionProps
 };
 use gaterdile::transmission::{Transmission, TransmissionType};
 
@@ -73,10 +72,10 @@ async fn handle_transmission(
 
         //------------community management----------
         TransmissionType::CreateCommunity(name) => {
-            todo!()
+            handle_create_community(name, props.uid, conn, stream).await
         }
         TransmissionType::JoinCommunity(server_id) => {
-            handle_join_server(server_id, props.uid, conn, stream).await;
+            handle_join_community(server_id, props.uid, conn, stream).await;
         }
         TransmissionType::GetCommunity(server_id) => {
             handle_get_server(server_id, conn, stream).await;

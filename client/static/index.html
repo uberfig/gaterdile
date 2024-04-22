@@ -7,11 +7,15 @@
     <title>Chat</title>
     <link rel="stylesheet" href="styles.css">
 
-    <script src="script.js"></script>
+    <script type="module" src="./js/script.js"></script>
+
+    <script src="https://unpkg.com/feather-icons"></script>
+
+    <!-- <script src="script.js"></script>
     <script src="modules/transmission_types.js"></script>
     <script src="modules/transmission_methods.js"></script>
     <script src="twemoji/v/latest/twemoji.min.js" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://unpkg.com/feather-icons"></script> -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js" crossorigin="anonymous"></script> -->
 </head>
 
@@ -25,7 +29,7 @@
 
             <hr>
 
-            <button class="community_butt">
+            <button class="community_butt" id="create_community_butt">
                 <i data-feather="plus"></i>
             </button>
         </div>
@@ -76,8 +80,8 @@
                     <div contenteditable="true" role="textbox" aria-roledescription="message input" name="text_input"
                         id="message_input" placeholder="message #0,0" class="text_input"></div>
                 </div>
-                <button onclick="send_clicked()" class="inputbutton"><i data-feather="smile"></i></button>
-                <button class="inputbutton send" onclick="send_clicked()"><i data-feather="send"></i></button>
+                <button class="inputbutton" id="insert_emoji_button"><i data-feather="smile"></i></button>
+                <button class="inputbutton send" id="send_msg_button" ><i data-feather="send"></i></button>
 
             </div>
         </div>
@@ -108,6 +112,34 @@
                 <label for="password">Password</label><br><input type="password" name="password" />
                 <br>
                 <input type="submit" value="Signup" />
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class='prompt' id="create_comm_prompt">
+    <div class="login" id="create_comm">
+        <p class="auth_failure" , id="create_comm_failure"></p>
+        <div>
+            <h1>Create Community</h1>
+            <form autocomplete="off" id="create_comm_form">
+                <label for="name">name</label><br><input type="text" name="name" />
+                <br>
+                <input type="submit" value="Create" />
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class='prompt' id="create_room_prompt">
+    <div class="login" id="create_room">
+        <p class="auth_failure" , id="create_room_failure"></p>
+        <div>
+            <h1>Create Room</h1>
+            <form autocomplete="off" id="create_room_form">
+                <label for="name">name</label><br><input type="text" name="name" />
+                <br>
+                <input type="submit" value="Create" />
             </form>
         </div>
     </div>

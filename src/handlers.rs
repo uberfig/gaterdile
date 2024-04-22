@@ -1,14 +1,14 @@
 use crate::{
     db::{
-        get_community_members, get_community_rooms, get_events_prior, get_msg_by_id,
-        get_room_events, get_room_events_since_timestamp_and_id, join_community, send_message,
-        DbConn, User,
+        create_community, get_community_members, get_community_rooms, get_events_prior,
+        get_msg_by_id, get_room_events, get_room_events_since_timestamp_and_id, join_community,
+        send_message, DbConn, User,
     },
     // db_event_types::RoomEvent,
     db_types::{Message, Room, ServerMember},
     transmission::{
-        AuthErr, ChannelEvent, InsertResult, NewTransmissionMessage, ServerInfoData, Transmission,
-        TransmissionType, UserAuth,
+        AuthErr, ChannelEvent, CreateCommunityResult, InsertResult, NewTransmissionMessage,
+        ServerInfoData, Transmission, TransmissionType, UserAuth,
     },
 };
 // use rocket::futures;
@@ -101,10 +101,12 @@ pub async fn fetch_new_events(
                         }
                     }
 
-                    let _ = TransmissionType::ChannelEvent(messages)
-                        .wrap_into_transmission()
-                        .send(stream)
-                        .await;
+                    if messages.len() > 0 {
+                        let _ = TransmissionType::ChannelEvent(messages)
+                            .wrap_into_transmission()
+                            .send(stream)
+                            .await;
+                    }
                 }
                 None => {
                     // println!("no new messages")
@@ -298,7 +300,7 @@ pub async fn handle_get_server(
         .await;
 }
 
-pub async fn handle_join_server(
+pub async fn handle_join_community(
     server_id: i64,
     userid: i64,
     conn: &mut Connection<DbConn>,
@@ -311,11 +313,26 @@ pub async fn handle_join_server(
         .await;
 }
 
-pub async fn handle_create_server(
+pub async fn handle_create_community(
     name: String,
     userid: i64,
     conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
-    
+    let result = create_community(conn, userid, name).await;
+    match result {
+        Ok(x) => {
+            let _ = TransmissionType::CreateCommunityResult(CreateCommunityResult::Success(x))
+                .wrap_into_transmission()
+                .send(stream)
+                .await;
+        }
+        Err(x) => {
+            dbg!(x);
+            let _ = TransmissionType::CreateCommunityResult(CreateCommunityResult::Failure)
+                .wrap_into_transmission()
+                .send(stream)
+                .await;
+        }
+    }
 }

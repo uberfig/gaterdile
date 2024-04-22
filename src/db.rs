@@ -252,17 +252,11 @@ pub async fn join_community(
     userid: i64,
     nickname: Option<String>,
 ) -> JoinServerResult {
-    let message: ServerMember = ServerMember {
-        server_id,
-        userid,
-        nickname,
-    };
-
     let _result = sqlx::query!(
         "INSERT INTO community_members(server_id, userid, nickname) VALUES($1, $2, $3)",
-        message.server_id,
-        message.userid,
-        message.nickname
+        server_id,
+        userid,
+        nickname
     )
     .fetch_one(&mut ***conn)
     .await;
@@ -364,7 +358,7 @@ pub async fn get_room_events(
     a
 }
 
-/// returns the community id
+/// creates a community and a general room and returns the community id
 pub async fn create_community(
     conn: &mut Connection<DbConn>,
     creator: i64,
@@ -381,6 +375,8 @@ pub async fn create_community(
         Ok(x) => id = x.id,
         Err(x) => return Err(x),
     }
+
+    let _x = join_community(conn, id, creator, None).await;
 
     //it is ok to ignore this as it is not a critical error if the general room failed to be created because of a disconnect to the db
     //if a user were to create a community and right before this line the connection breaks it would simply create a community with no rooms
