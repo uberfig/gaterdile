@@ -385,8 +385,8 @@ pub async fn is_admin(
     conn: &mut Connection<DbConn>,
     userid: i64,
     community: i64,
-) -> bool {
-    let mut a = sqlx::query!(
+) -> Result<bool, Error> {
+    let a = sqlx::query!(
         "SELECT owner as id FROM communities WHERE id = $1",
         community
     )
@@ -396,13 +396,13 @@ pub async fn is_admin(
     match a {
         Ok(x) => {
             if x.is_some_and(|x| x.id == Some(userid)) {
-                return true;
+                return Ok(true);
             }
         },
-        Err(x) => {},
+        Err(x) => return Err(x),
     }
 
-    let mut a = sqlx::query!(
+    let a = sqlx::query!(
         "SELECT * FROM roles JOIN role_members on roles.id = role_members.roleid WHERE community = $1 AND is_admin = true AND userid = $2 LIMIT 1",
         community, userid
     )
@@ -412,19 +412,21 @@ pub async fn is_admin(
     match a {
         Ok(x) => {
             if x.is_some() {
-                return true;
+                return Ok(true);
             }
         },
         Err(_x) => {},
     }
 
-    return false;
+    return Ok(false);
 }
 
 pub enum CreateRoomResult {
     Success(i64),
     Failure,
     NotAuthorised,
+    InvalidName,
+    NameTaken,
 }
 pub async fn create_room(
     conn: &mut Connection<DbConn>,
@@ -433,9 +435,38 @@ pub async fn create_room(
     name: String,
 ) -> Result<CreateRoomResult, Error> {
     let admin = is_admin(conn, creator, community).await;
-    if !admin {
-        return Ok(CreateRoomResult::NotAuthorised);
+
+    match admin {
+        Ok(x) => {
+            if !x {
+                return Ok(CreateRoomResult::NotAuthorised);
+            }
+        },
+        Err(x) => return Err(x),
     }
 
-    todo!()
+    let result = sqlx::query!(
+        "SELECT * FROM rooms WHERE server = $1 AND name = $2 LIMIT 1",
+        community, name
+    ).fetch_optional(&mut ***conn)
+    .await;
+
+    if result.is_err() {
+        return Err(result.unwrap_err());
+    }
+
+    if result.is_ok_and(|x| x.is_some()) {
+        return Ok(CreateRoomResult::NameTaken);
+    }
+
+    let result = sqlx::query!(
+        "INSERT INTO rooms(server, name) VALUES($1, $2) RETURNING id",
+        community, name
+    ).fetch_one(&mut ***conn)
+    .await;
+
+    match result {
+        Ok(x) => Ok(CreateRoomResult::Success(x.id)),
+        Err(x) => Err(x),
+    }
 }
