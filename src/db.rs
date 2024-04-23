@@ -220,6 +220,19 @@ pub async fn get_community_members(
     val
 }
 
+pub async fn get_community(
+    conn: &mut Connection<DbConn>,
+    id: i64,
+) -> Result<TransmissionCommunity, Error> {
+    sqlx::query_as!(
+        TransmissionCommunity,
+        "SELECT * FROM communities WHERE id = $1",
+        id
+    )
+    .fetch_one(&mut ***conn)
+    .await
+}
+
 /// gets all servers a user is a part of
 pub async fn get_user_communities(
     conn: &mut Connection<DbConn>,

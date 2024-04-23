@@ -398,6 +398,20 @@ hr {
     display: none;
 }
 
+.prompt_butt {
+    color: var(--text_color);
+    background-color: var(--accent_very_dark);
+    border: 3px solid var(--dark_bg);
+    border-radius: 8px;
+    padding: 4px;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.prompt_butt:hover {
+    background-color: var(--accent_dark);
+}
+
 .auth_prompt {
     position: fixed;
     width: 100%;

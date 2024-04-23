@@ -305,10 +305,12 @@ pub async fn handle_join_community(
     stream: &mut ws::stream::DuplexStream,
 ) {
     let a = join_community(conn, server_id, userid, None).await;
+
     let _ = TransmissionType::JoinServerResult(a)
         .wrap_into_transmission()
         .send(stream)
         .await;
+
 }
 
 pub async fn handle_create_community(
