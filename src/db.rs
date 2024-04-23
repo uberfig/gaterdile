@@ -4,7 +4,7 @@ use crate::{
     db_event_types::{RoomEvent, RoomEventType},
     db_types::{Community, Message, Room, ServerMember},
     // schema::db_schema::{self, community_members, room_events, rooms},
-    transmission::{AuthErr, InsertResult, JoinServerResult, UserAuth},
+    transmission::{AuthErr, InsertResult, JoinServerResult, TransmissionCommunity, UserAuth},
 };
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
@@ -224,14 +224,38 @@ pub async fn get_community_members(
 pub async fn get_user_communities(
     conn: &mut Connection<DbConn>,
     uid: i64,
-) -> Result<Vec<ServerMember>, Error> {
-    sqlx::query_as!(
+) -> Result<Vec<TransmissionCommunity>, Error> {
+    let x = sqlx::query_as!(
         ServerMember,
         "SELECT * FROM community_members WHERE userid = $1",
         uid
     )
     .fetch_all(&mut ***conn)
-    .await
+    .await;
+
+    let x = x.unwrap();
+
+    let mut y = Vec::with_capacity(x.len());
+
+    for i in x.into_iter() {
+        let result = sqlx::query_as!(
+            TransmissionCommunity,
+            "SELECT * FROM communities WHERE id = $1",
+            i.server_id
+        )
+        .fetch_one(&mut ***conn)
+        .await;
+
+        if result.is_err() {
+            return Err(result.unwrap_err());
+        }
+
+        let result = result.unwrap();
+
+        y.push(result)
+    }
+
+    return Ok(y);
 }
 
 /// gets all rooms in a community
@@ -252,16 +276,25 @@ pub async fn join_community(
     userid: i64,
     nickname: Option<String>,
 ) -> JoinServerResult {
+
+
     let _result = sqlx::query!(
         "INSERT INTO community_members(server_id, userid, nickname) VALUES($1, $2, $3)",
         server_id,
         userid,
         nickname
     )
-    .fetch_one(&mut ***conn)
+    .execute(&mut ***conn)
     .await;
 
-    JoinServerResult::Success(server_id)
+    match _result {
+        Ok(x) => JoinServerResult::Success(server_id),
+        Err(x) => {
+            dbg!(x);
+            JoinServerResult::Failure
+        },
+    }
+    
 }
 
 pub async fn create_channel_event(
@@ -317,7 +350,7 @@ pub async fn get_events_prior(
     last_msg: i64,
     amount: i64,
 ) -> Result<Vec<RoomEvent>, Error> {
-    let mut a = sqlx::query_as!(
+    let mut a: Result<Vec<RoomEvent>, Error> = sqlx::query_as!(
         RoomEvent,
         "SELECT * FROM room_events WHERE channel_id = $1 AND timestamp <= $2 AND id != $3 ORDER BY timestamp ASC LIMIT $4",
         channel_id, prior_to, last_msg, amount
@@ -366,8 +399,11 @@ pub async fn create_community(
 ) -> Result<i64, Error> {
     let result = sqlx::query!(
         "INSERT INTO communities(nickname, owner, is_public) VALUES($1, $2, $3) RETURNING id",
-        name, creator, false
-    ).fetch_one(&mut ***conn)
+        name,
+        creator,
+        false
+    )
+    .fetch_one(&mut ***conn)
     .await;
 
     let id;
@@ -377,6 +413,8 @@ pub async fn create_community(
     }
 
     let _x = join_community(conn, id, creator, None).await;
+
+    dbg!(_x);
 
     //it is ok to ignore this as it is not a critical error if the general room failed to be created because of a disconnect to the db
     //if a user were to create a community and right before this line the connection breaks it would simply create a community with no rooms
@@ -403,7 +441,7 @@ pub async fn is_admin(
             if x.is_some_and(|x| x.id == Some(userid)) {
                 return Ok(true);
             }
-        },
+        }
         Err(x) => return Err(x),
     }
 
@@ -419,8 +457,8 @@ pub async fn is_admin(
             if x.is_some() {
                 return Ok(true);
             }
-        },
-        Err(_x) => {},
+        }
+        Err(_x) => {}
     }
 
     return Ok(false);
@@ -446,14 +484,16 @@ pub async fn create_room(
             if !x {
                 return Ok(CreateRoomResult::NotAuthorised);
             }
-        },
+        }
         Err(x) => return Err(x),
     }
 
     let result = sqlx::query!(
         "SELECT * FROM rooms WHERE server = $1 AND name = $2 LIMIT 1",
-        community, name
-    ).fetch_optional(&mut ***conn)
+        community,
+        name
+    )
+    .fetch_optional(&mut ***conn)
     .await;
 
     if result.is_err() {
@@ -466,8 +506,10 @@ pub async fn create_room(
 
     let result = sqlx::query!(
         "INSERT INTO rooms(server, name) VALUES($1, $2) RETURNING id",
-        community, name
-    ).fetch_one(&mut ***conn)
+        community,
+        name
+    )
+    .fetch_one(&mut ***conn)
     .await;
 
     match result {

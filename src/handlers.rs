@@ -1,8 +1,6 @@
 use crate::{
     db::{
-        create_community, get_community_members, get_community_rooms, get_events_prior,
-        get_msg_by_id, get_room_events, get_room_events_since_timestamp_and_id, join_community,
-        send_message, DbConn, User,
+        create_community, get_community_members, get_community_rooms, get_events_prior, get_msg_by_id, get_room_events, get_room_events_since_timestamp_and_id, get_user_communities, join_community, send_message, DbConn, User
     },
     // db_event_types::RoomEvent,
     db_types::{Message, Room, ServerMember},
@@ -334,5 +332,22 @@ pub async fn handle_create_community(
                 .send(stream)
                 .await;
         }
+    }
+}
+
+pub async fn handle_get_user_communities(
+    userid: i64,
+    conn: &mut Connection<DbConn>,
+    stream: &mut ws::stream::DuplexStream,
+) {
+    let result = get_user_communities(conn, userid).await;
+    match result {
+        Ok(x) => {
+            let _ = TransmissionType::UserCommunities(x)
+                .wrap_into_transmission()
+                .send(stream)
+                .await;
+        },
+        Err(_x) => todo!(),
     }
 }

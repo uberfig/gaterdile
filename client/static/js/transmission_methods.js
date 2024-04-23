@@ -20,6 +20,11 @@ export async function create_community(serverConn, name) {
 	serverConn.send(JSON.stringify(val));
 }
 
+export async function get_user_communities(serverConn) {
+	const val = new trans_types.Transmission("GetUserCommunities", "GetUserCommunities");
+	serverConn.send(JSON.stringify(val));
+}
+
 export async function get_old_messages(serverConn) {
 	console.log("oldest_message"+oldest_message)
 	var out = new trans_types.Transmission("GetPriorMessages", new trans_types.GetPriorMessages(oldest_message));

@@ -71,7 +71,7 @@ function end_replying() {
 }
 
 function reply_butt_func(id) {
-	console.log("setting replying"+id);
+	console.log("setting replying" + id);
 	set_replying(id);
 }
 
@@ -98,7 +98,7 @@ async function scroll_and_highlight(id) {
 			}
 			loading_prior = true;
 			trans_methods.get_old_messages(serverConn);
-			
+
 		}
 	}
 	const element = document.getElementById(id);
@@ -347,10 +347,8 @@ async function handle_AuthResult(serverConn, event) {
 
 	if (event.data.AuthResult.hasOwnProperty("Success")) {
 		console.log("Login Success");
+		trans_methods.get_user_communities(serverConn);
 		auth_success(event.data.AuthResult.Success);
-		// trans_methods.join_community(serverConn, 0);
-		// trans_methods.get_community(serverConn, 0);
-		// trans_methods.get_room(serverConn, 0, 0);
 	} else {
 		auth_failure(event.data.AuthResult);
 	}
@@ -359,7 +357,7 @@ async function handle_AuthResult(serverConn, event) {
 function create_room_element(TransmissionChannel) {
 	const parent = document.createElement("button");
 	parent.classList.add("room_button");
-	const text  = document.createTextNode("# "+TransmissionChannel.name);
+	const text = document.createTextNode("# " + TransmissionChannel.name);
 	parent.appendChild(text);
 	parent.dataset.channelid = TransmissionChannel.id
 
@@ -390,12 +388,31 @@ function handle_channelevent(event) {
 				break;
 		}
 	}
+}
 
+function community_butt_pressed(community_id){
+	console.log(community_id);
+}
+
+function handle_user_communities(event) {
+	var communities = document.getElementById("communities");
+	var list = event.UserCommunities;
+	console.log(list);
+	for (let index = 0; index < list.length; index++) {
+		console.log(list[index])
+
+		const parent = document.createElement("button");
+		parent.classList.add("community_butt");
+		const text = document.createTextNode(list[index].nickname.charAt(0));
+		parent.appendChild(text);
+		parent.addEventListener("click", community_butt_pressed(list[index].id));
+		communities.appendChild(parent);
+	}
 }
 
 async function handle_event(serverConn, event) {
 	// if event
-	console.log("handleing event: ", event.transmission_type);
+	console.log("handling event: ", event.transmission_type);
 
 	switch (event.transmission_type) {
 		case "RequestAuth":
@@ -411,7 +428,7 @@ async function handle_event(serverConn, event) {
 			handle_channelevent(event.data);
 			break;
 		case "ServerEvent":
-			
+
 			break;
 		case "UserEvent":
 
@@ -426,7 +443,7 @@ async function handle_event(serverConn, event) {
 			handle_PriorMessages(event.data);
 			break;
 		case "UserCommunities":
-
+			handle_user_communities(event.data);
 			break;
 		case "JoinServerResult":
 
@@ -435,6 +452,10 @@ async function handle_event(serverConn, event) {
 
 			break;
 		case "UsernameAvailable":
+
+			break;
+		case "CreateCommunityResult":
+			console.log(event);
 
 			break;
 	}
@@ -495,7 +516,7 @@ function signup(e) {
 	var formData = new FormData(form);
 	formData = Object.fromEntries(formData);
 
-	trans_methods.signup(formData.username, formData.password);
+	trans_methods.signup(serverConn, formData.username, formData.password);
 
 	return false;
 }

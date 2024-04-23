@@ -13,9 +13,10 @@ pub struct TransmissionChannel {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TransmissionCommunity {
-    id: Option<i64>,
-    nickname: String,
-    owner: i64,
+    pub id: Option<i64>,
+    pub nickname: String,
+    pub owner: Option<i64>,
+    pub is_public: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -179,7 +180,7 @@ pub enum TransmissionType {
     CreateUser(UserAuth),
 
     GetCommunity(i64), //requests to get server info
-    GetUserServers,
+    GetUserCommunities,
     JoinCommunity(i64),
     CreateCommunity(String), //create server with given nickname
     GetRoom(i64, i64),       //server, channel gets the channels recent messages
@@ -219,8 +220,8 @@ impl std::fmt::Display for TransmissionType {
             TransmissionType::InvalidTransmission => write!(f, "InvalidTransmission"),
             TransmissionType::CreateUserResult(_) => write!(f, "CreateUserResult"),
             TransmissionType::ServerInfo(_) => write!(f, "ServerInfo"),
-            TransmissionType::GetUserServers => write!(f, "GetUserServers"),
-            TransmissionType::UserCommunities(_) => write!(f, "UserServers"),
+            TransmissionType::GetUserCommunities => write!(f, "GetUserCommunities"),
+            TransmissionType::UserCommunities(_) => write!(f, "UserCommunities"),
             TransmissionType::JoinCommunity(_) => write!(f, "JoinServer"),
             TransmissionType::JoinServerResult(_) => write!(f, "JoinServerResult"),
             TransmissionType::GetPriorMessages(_) => write!(f, "GetPriorMessages"),

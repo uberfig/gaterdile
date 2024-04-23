@@ -65,7 +65,7 @@ CREATE TABLE reactions (
 );
 
 CREATE TABLE community_members (
-	server_id	BIGINT NOT NULL,
+	server_id	BIGINT NOT NULL REFERENCES communities(id)  ON DELETE CASCADE,
 	userid		BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 	nickname	TEXT,
 	PRIMARY KEY(server_id, userid)

@@ -7,7 +7,7 @@ use rocket::Shutdown;
 use std::time::Duration;
 
 use gaterdile::handlers::{
-    fetch_new_events, handle_auth, handle_create_community, handle_create_user, handle_get_channel, handle_get_prior, handle_get_server, handle_join_community, handle_send_message, ConnectionProps
+    fetch_new_events, handle_auth, handle_create_community, handle_create_user, handle_get_channel, handle_get_prior, handle_get_server, handle_get_user_communities, handle_join_community, handle_send_message, ConnectionProps
 };
 use gaterdile::transmission::{Transmission, TransmissionType};
 
@@ -80,8 +80,8 @@ async fn handle_transmission(
         TransmissionType::GetCommunity(server_id) => {
             handle_get_server(server_id, conn, stream).await;
         }
-        TransmissionType::GetUserServers => {
-            todo!()
+        TransmissionType::GetUserCommunities => {
+            handle_get_user_communities(props.uid, conn, stream).await;
         }
         TransmissionType::CreateRoom(_, _) => todo!(),
         TransmissionType::GetRoom(server_id, channel_id) => {
@@ -129,6 +129,7 @@ pub fn message_channel(
 
 			tokio::spawn(async move {
 				let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
+				let _ = Transmission { data: TransmissionType::GetUserCommunities, transmission_type: TransmissionType::GetUserCommunities.to_string() }.send(&mut stream).await;
 
 				loop {
                     let shutdown = shutdown.clone();
