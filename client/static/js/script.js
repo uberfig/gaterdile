@@ -397,15 +397,14 @@ function community_butt_pressed(community_id){
 function handle_user_communities(event) {
 	var communities = document.getElementById("communities");
 	var list = event.UserCommunities;
-	console.log(list);
-	for (let index = 0; index < list.length; index++) {
-		console.log(list[index])
 
+	for (let index = 0; index < list.length; index++) {
 		const parent = document.createElement("button");
 		parent.classList.add("community_butt");
 		const text = document.createTextNode(list[index].nickname.charAt(0));
 		parent.appendChild(text);
-		parent.addEventListener("click", community_butt_pressed(list[index].id));
+		parent.addEventListener("click", () => community_butt_pressed(list[index].id));
+		parent.setAttribute("title", list[index].nickname);
 		communities.appendChild(parent);
 	}
 }
