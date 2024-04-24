@@ -20,7 +20,7 @@ async function send_clicked() {
 
 	document.getElementById("message_input").textContent = "";
 	if (input != "") {
-		trans_methods.send_message(input, 0, 0, reply_id);
+		trans_methods.send_message(serverConn, input, uid, subscribed_server, subscribed_channel, reply_id);
 	}
 	end_replying();
 }
@@ -357,6 +357,7 @@ async function handle_AuthResult(serverConn, event) {
 function room_button_clicked(room_id){
 	console.log(room_id);
 	trans_methods.get_room(serverConn, room_id);
+	subscribed_channel = room_id;
 }
 
 function create_room_element(TransmissionChannel) {
@@ -372,6 +373,9 @@ function create_room_element(TransmissionChannel) {
 
 async function handle_serverinfo(event) {
 	event = event.ServerInfo;
+
+	subscribed_server = event.server_data.id;
+
 	uname_map = {};
 	for (let index = 0; index < event.users.length; index++) {
 		console.log(event.users[index].nickname);

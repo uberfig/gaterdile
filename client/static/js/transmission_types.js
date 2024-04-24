@@ -43,7 +43,7 @@ export class Message {
 	channel;
 	// reply = null;
 
-	constructor(text, server, channel, replying = null) {
+	constructor(text, uid, server, channel, replying = null) {
 		this.text = text;
 		this.sender = uid;
 		this.server = server;
@@ -56,8 +56,8 @@ export class Message {
 
 export class TransmitMessage {
 	SendMessage;
-	constructor(text, server, channel, replying = null) {
-		this.SendMessage = new Message(text, server, channel, replying)
+	constructor(text, uid, server, channel, replying = null) {
+		this.SendMessage = new Message(text, uid, server, channel, replying)
 	}
 }
 

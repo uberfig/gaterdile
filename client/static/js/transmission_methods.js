@@ -37,8 +37,8 @@ export async function get_community(serverConn, server_id) {
 	serverConn.send(JSON.stringify(out));
 }
 
-export async function send_message(text, server, channel, reply = null) {
-	var message = new trans_types.TransmitMessage(text, server, channel, reply);
+export async function send_message(serverConn, text, uid, server, channel, reply = null) {
+	var message = new trans_types.TransmitMessage(text, uid, server, channel, reply);
 	var outgoing = new trans_types.Transmission("Message", message);
 	serverConn.send(JSON.stringify(outgoing));
 	console.log("sent, ", outgoing);
