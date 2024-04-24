@@ -100,6 +100,8 @@ pub async fn fetch_new_events(
                     }
 
                     if !messages.is_empty() {
+                        println!("sending");
+                        dbg!(&messages);
                         let _ = TransmissionType::ChannelEvent(messages)
                             .wrap_into_transmission()
                             .send(stream)
@@ -107,7 +109,7 @@ pub async fn fetch_new_events(
                     }
                 }
                 None => {
-                    println!("no new messages")
+                    // println!("no new messages");
                 }
             }
         }
@@ -205,8 +207,8 @@ pub async fn handle_get_channel(
                 props.last_sent_timestamp = Some(y.timestamp);
                 props.last_sent_id = Some(y.id.unwrap());
 
-                println!("newlast id: ");
-                dbg!(y.id);
+                // println!("newlast id: ");
+                // dbg!(y.id);
             }
             None => {
                 // println!("no messages")

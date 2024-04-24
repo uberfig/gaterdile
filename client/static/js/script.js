@@ -393,11 +393,11 @@ async function handle_serverinfo(event) {
 
 function handle_channelevent(event) {
 
-	for (i in event.ChannelEvent) {
+	for (let index = 0; index < event.ChannelEvent; index++) {
 		// console.log(event.ChannelEvent[i]);
-		switch (event.ChannelEvent[i].event_type) {
+		switch (event.ChannelEvent[index].event_type) {
 			case "NewMessage":
-				handle_event_NewMessage(event.ChannelEvent[i].data);
+				handle_event_NewMessage(event.ChannelEvent[index].data);
 				break;
 		}
 	}
