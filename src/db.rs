@@ -2,7 +2,7 @@
 
 use crate::{
     db_event_types::{RoomEvent, RoomEventType},
-    db_types::{Community, Message, Room, ServerMember},
+    db_types::{Message, Room, ServerMember},
     // schema::db_schema::{self, community_members, room_events, rooms},
     transmission::{AuthErr, InsertResult, JoinServerResult, TransmissionCommunity, UserAuth},
 };
@@ -419,11 +419,10 @@ pub async fn create_community(
     .fetch_one(&mut ***conn)
     .await;
 
-    let id;
-    match result {
-        Ok(x) => id = x.id,
+    let id = match result {
+        Ok(x) => x.id,
         Err(x) => return Err(x),
-    }
+    };
 
     let _x = join_community(conn, id, creator, None).await;
 

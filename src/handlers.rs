@@ -1,6 +1,6 @@
 use crate::{
     db::{
-        create_community, get_community_members, get_community_rooms, get_events_prior, get_msg_by_id, get_room_events, get_room_events_since_timestamp_and_id, get_user_communities, join_community, send_message, DbConn, User
+        create_community, get_community, get_community_members, get_community_rooms, get_events_prior, get_msg_by_id, get_room_events, get_room_events_since_timestamp_and_id, get_user_communities, join_community, send_message, DbConn, User
     },
     // db_event_types::RoomEvent,
     db_types::{Message, Room, ServerMember},
@@ -51,13 +51,12 @@ pub async fn fetch_new_events(
 
     //----------------get room events----------------
 
-    if props.listening_channel.is_none() || props.listening_server.is_none() {
+    if props.listening_channel.is_none() {
         return;
     }
 
     if props.last_sent_timestamp.is_none() {
         handle_get_channel(
-            props.listening_server.unwrap(),
             props.listening_channel.unwrap(),
             props,
             conn,
@@ -81,6 +80,7 @@ pub async fn fetch_new_events(
     match since {
         Ok(since) => {
             let newlast = since.get(since.len().wrapping_sub(1));
+            dbg!(newlast);
             match newlast {
                 Some(y) => {
                     if y.id == props.last_sent_id {
@@ -99,7 +99,7 @@ pub async fn fetch_new_events(
                         }
                     }
 
-                    if messages.len() > 0 {
+                    if !messages.is_empty() {
                         let _ = TransmissionType::ChannelEvent(messages)
                             .wrap_into_transmission()
                             .send(stream)
@@ -107,7 +107,7 @@ pub async fn fetch_new_events(
                     }
                 }
                 None => {
-                    // println!("no new messages")
+                    println!("no new messages")
                 }
             }
         }
@@ -189,7 +189,6 @@ pub async fn handle_create_user(
 }
 
 pub async fn handle_get_channel(
-    server_id: i64,
     channel_id: i64,
     props: &mut ConnectionProps,
     conn: &mut Connection<DbConn>,
@@ -199,7 +198,7 @@ pub async fn handle_get_channel(
 
     if let Ok(x) = a {
         props.listening_channel = Some(channel_id);
-        props.listening_server = Some(server_id);
+        // props.listening_server = Some(server_id);
         let newlast = x.get(x.len().wrapping_sub(1));
         match newlast {
             Some(y) => {
@@ -272,9 +271,12 @@ pub async fn handle_get_prior(
 
 pub async fn handle_get_server(
     server_id: i64,
+    props: &mut ConnectionProps,
     conn: &mut Connection<DbConn>,
     stream: &mut ws::stream::DuplexStream,
 ) {
+    props.listening_server = Some(server_id);
+
     let members = get_community_members(conn, server_id).await;
     let channels = get_community_rooms(conn, server_id).await;
     // let (members, channels) = join!(members_fut, channels_fut);
@@ -290,6 +292,7 @@ pub async fn handle_get_server(
             .into_iter()
             .map(Room::into)
             .collect(),
+        server_data: get_community(conn, server_id).await.unwrap(),
     };
 
     let _ = TransmissionType::ServerInfo(data)

@@ -354,24 +354,33 @@ async function handle_AuthResult(serverConn, event) {
 	}
 }
 
+function room_button_clicked(room_id){
+	console.log(room_id);
+	trans_methods.get_room(serverConn, room_id);
+}
+
 function create_room_element(TransmissionChannel) {
 	const parent = document.createElement("button");
 	parent.classList.add("room_button");
 	const text = document.createTextNode("# " + TransmissionChannel.name);
 	parent.appendChild(text);
 	parent.dataset.channelid = TransmissionChannel.id
+	parent.addEventListener("click", () => room_button_clicked(TransmissionChannel.id));
 
 	return parent;
 }
 
 async function handle_serverinfo(event) {
 	event = event.ServerInfo;
+	uname_map = {};
 	for (let index = 0; index < event.users.length; index++) {
 		console.log(event.users[index].nickname);
 		uname_map[event.users[index].userid] = event.users[index].nickname;
 	}
 	console.log(uname_map);
 	const room_container = document.getElementById("rooms");
+	room_container.replaceChildren();
+
 	for (let index = 0; index < event.channels.length; index++) {
 		console.log(event.channels[index].name);
 		room_container.appendChild(create_room_element(event.channels[index]));
@@ -392,6 +401,7 @@ function handle_channelevent(event) {
 
 function community_butt_pressed(community_id){
 	console.log(community_id);
+	trans_methods.get_community(serverConn, community_id);
 }
 
 function handle_user_communities(event) {
@@ -405,6 +415,7 @@ function handle_user_communities(event) {
 		parent.appendChild(text);
 		parent.addEventListener("click", () => community_butt_pressed(list[index].id));
 		parent.setAttribute("title", list[index].nickname);
+		parent.id = "com_" + list[index].id;
 		communities.appendChild(parent);
 	}
 }
@@ -582,6 +593,7 @@ function initEvents() {
 	document.getElementById("signup_form").addEventListener("submit", signup, false);
 
 	document.getElementById("create_comm_form").addEventListener("submit", create_community, false);
+	document.getElementById("cancel_create_comm_prompt").addEventListener("click", hide_community_prompt, false);
 	document.getElementById("create_room_form").addEventListener("submit", create_room, false);
 
 	document.getElementById("create_community_butt").addEventListener("click", create_community_prompt, false);

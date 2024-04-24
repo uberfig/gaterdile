@@ -78,14 +78,14 @@ async fn handle_transmission(
             handle_join_community(server_id, props.uid, conn, stream).await;
         }
         TransmissionType::GetCommunity(server_id) => {
-            handle_get_server(server_id, conn, stream).await;
+            handle_get_server(server_id, props, conn, stream).await;
         }
         TransmissionType::GetUserCommunities => {
             handle_get_user_communities(props.uid, conn, stream).await;
         }
         TransmissionType::CreateRoom(_, _) => todo!(),
-        TransmissionType::GetRoom(server_id, channel_id) => {
-            handle_get_channel(server_id, channel_id, props, conn, stream).await;
+        TransmissionType::GetRoom(channel_id) => {
+            handle_get_channel(channel_id, props, conn, stream).await;
         }
 
         TransmissionType::GetPriorMessages(since) => {
@@ -129,7 +129,6 @@ pub fn message_channel(
 
 			tokio::spawn(async move {
 				let _ = Transmission { data: TransmissionType::RequestAuth, transmission_type: TransmissionType::RequestAuth.to_string() }.send(&mut stream).await;
-				let _ = Transmission { data: TransmissionType::GetUserCommunities, transmission_type: TransmissionType::GetUserCommunities.to_string() }.send(&mut stream).await;
 
 				loop {
                     let shutdown = shutdown.clone();

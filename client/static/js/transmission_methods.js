@@ -1,8 +1,9 @@
 import * as trans_types from "./transmission_types.js";
 
-export async function get_room(serverConn, server, channel) {
-	const val = new trans_types.Transmission("GetChannel", new trans_types.GetChannelTransmit(server, channel));
+export async function get_room(serverConn, channel) {
+	const val = new trans_types.Transmission("GetChannel", new trans_types.GetChannelTransmit(channel));
 	serverConn.send(JSON.stringify(val));
+	console.log(JSON.stringify(val))
 }
 
 export async function create_room(serverConn, server, name) {

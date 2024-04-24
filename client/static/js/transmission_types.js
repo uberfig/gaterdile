@@ -30,10 +30,9 @@ export class CreateRoom {
 }
 
 export class GetChannelTransmit {
-	GetRoom = [];
-	constructor(server, channel) {
-		this.GetRoom.push(server);
-		this.GetRoom.push(channel);
+	GetRoom;
+	constructor(channel) {
+		this.GetRoom = channel;
 	}
 }
 
