@@ -356,6 +356,7 @@ async function handle_AuthResult(serverConn, event) {
 
 function room_button_clicked(room_id){
 	console.log(room_id);
+	document.getElementById("chat").replaceChildren();
 	trans_methods.get_room(serverConn, room_id);
 	subscribed_channel = room_id;
 }
@@ -375,6 +376,7 @@ async function handle_serverinfo(event) {
 	event = event.ServerInfo;
 
 	subscribed_server = event.server_data.id;
+	document.getElementById("community_name").innerText = event.server_data.nickname;
 
 	uname_map = {};
 	for (let index = 0; index < event.users.length; index++) {
@@ -392,11 +394,14 @@ async function handle_serverinfo(event) {
 }
 
 function handle_channelevent(event) {
+	console.log(event.ChannelEvent);
 
-	for (let index = 0; index < event.ChannelEvent; index++) {
+	for (let index = 0; index < event.ChannelEvent.length; index++) {
+		console.log(event.ChannelEvent[index]);
 		// console.log(event.ChannelEvent[i]);
 		switch (event.ChannelEvent[index].event_type) {
 			case "NewMessage":
+				console.log("NewMessage");
 				handle_event_NewMessage(event.ChannelEvent[index].data);
 				break;
 		}

@@ -3,10 +3,9 @@ use crate::{
         create_community, get_community, get_community_members, get_community_rooms, get_events_prior, get_msg_by_id, get_room_events, get_room_events_since_timestamp_and_id, get_user_communities, join_community, send_message, DbConn, User
     },
     // db_event_types::RoomEvent,
-    db_types::{Message, Room, ServerMember},
+    db_types::{Message, ServerMember},
     transmission::{
-        AuthErr, ChannelEvent, CreateCommunityResult, InsertResult, NewTransmissionMessage,
-        ServerInfoData, Transmission, TransmissionType, UserAuth,
+        AuthErr, ChannelEvent, CreateCommunityResult, InsertResult, NewTransmissionMessage, Room, ServerInfoData, Transmission, TransmissionType, UserAuth
     },
 };
 // use rocket::futures;
@@ -56,7 +55,7 @@ pub async fn fetch_new_events(
     }
 
     if props.last_sent_timestamp.is_none() {
-        handle_get_channel(
+        handle_get_room(
             props.listening_channel.unwrap(),
             props,
             conn,
@@ -80,7 +79,7 @@ pub async fn fetch_new_events(
     match since {
         Ok(since) => {
             let newlast = since.get(since.len().wrapping_sub(1));
-            dbg!(newlast);
+            // dbg!(newlast);
             match newlast {
                 Some(y) => {
                     if y.id == props.last_sent_id {
@@ -190,7 +189,7 @@ pub async fn handle_create_user(
         .await;
 }
 
-pub async fn handle_get_channel(
+pub async fn handle_get_room(
     channel_id: i64,
     props: &mut ConnectionProps,
     conn: &mut Connection<DbConn>,
@@ -289,11 +288,7 @@ pub async fn handle_get_server(
         .collect();
     let data = ServerInfoData {
         users: members,
-        channels: channels
-            .unwrap_or_default()
-            .into_iter()
-            .map(Room::into)
-            .collect(),
+        channels: channels.unwrap(),
         server_data: get_community(conn, server_id).await.unwrap(),
     };
 

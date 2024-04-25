@@ -2,9 +2,9 @@
 
 use crate::{
     db_event_types::{RoomEvent, RoomEventType},
-    db_types::{Message, Room, ServerMember},
+    db_types::{Message, ServerMember},
     // schema::db_schema::{self, community_members, room_events, rooms},
-    transmission::{AuthErr, InsertResult, JoinServerResult, TransmissionCommunity, UserAuth},
+    transmission::{AuthErr, InsertResult, JoinServerResult, Room, TransmissionCommunity, UserAuth},
 };
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
@@ -278,6 +278,17 @@ pub async fn get_community_rooms(
 ) -> Result<Vec<Room>, Error> {
     let a = sqlx::query_as!(Room, "SELECT * FROM rooms WHERE server = $1", server_id)
         .fetch_all(&mut ***conn)
+        .await;
+
+    a
+}
+
+pub async fn get_room(
+    conn: &mut Connection<DbConn>,
+    room_id: i64,
+) -> Result<Room, Error> {
+    let a = sqlx::query_as!(Room, "SELECT * FROM rooms WHERE id = $1", room_id)
+        .fetch_one(&mut ***conn)
         .await;
 
     a

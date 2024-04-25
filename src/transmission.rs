@@ -4,12 +4,12 @@ use rocket::{
 };
 use rocket_ws as ws;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TransmissionChannel {
-    pub id: Option<i64>,
-    pub server: i64,
-    pub name: String,
-}
+// #[derive(Debug, Deserialize, Serialize, Clone)]
+// pub struct TransmissionChannel {
+//     pub id: Option<i64>,
+//     pub server: i64,
+//     pub name: String,
+// }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TransmissionCommunity {
@@ -117,7 +117,7 @@ pub struct TransmissionMessage {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ServerInfoData {
     pub users: Vec<TransmissionServerMember>,
-    pub channels: Vec<TransmissionChannel>,
+    pub channels: Vec<Room>,
     pub server_data: TransmissionCommunity,
 }
 
@@ -169,7 +169,14 @@ pub enum ServerEventType {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserEvent {
-    event_type: String,
+    pub event_type: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Room {
+    pub id: i64,
+    pub server: i64,
+    pub name: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

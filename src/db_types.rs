@@ -120,28 +120,28 @@ impl From<ServerMember> for TransmissionServerMember {
 
 // #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
 // #[diesel(table_name = db_schema::rooms)]
-pub struct Room {
-    pub id: Option<i64>,
-    pub server: i64,
-    pub name: String,
-}
+// pub struct Room {
+//     pub id: Option<i64>,
+//     pub server: i64,
+//     pub name: String,
+// }
 
-impl From<Room> for TransmissionChannel {
-    fn from(value: Room) -> Self {
-        TransmissionChannel {
-            id: value.id,
-            server: value.server,
-            name: value.name,
-        }
-    }
-}
+// impl From<Room> for TransmissionChannel {
+//     fn from(value: Room) -> Self {
+//         TransmissionChannel {
+//             id: value.id,
+//             server: value.server,
+//             name: value.name,
+//         }
+//     }
+// }
 
-impl Room {
-    pub fn to_transmission(self) -> TransmissionChannel {
-        TransmissionChannel {
-            id: self.id,
-            server: self.server,
-            name: self.name,
-        }
-    }
-}
+// impl Room {
+//     pub fn to_transmission(self) -> TransmissionChannel {
+//         TransmissionChannel {
+//             id: self.id,
+//             server: self.server,
+//             name: self.name,
+//         }
+//     }
+// }
