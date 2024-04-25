@@ -5,7 +5,7 @@ use crate::{
     // db_event_types::RoomEvent,
     db_types::{Message, ServerMember},
     transmission::{
-        AuthErr, ChannelEvent, CreateCommunityResult, InsertResult, NewTransmissionMessage, Room, ServerInfoData, Transmission, TransmissionType, UserAuth
+        AuthErr, ChannelEvent, CreateCommunityResult, InsertResult, NewTransmissionMessage, ServerInfoData, Transmission, TransmissionType, UserAuth
     },
 };
 // use rocket::futures;

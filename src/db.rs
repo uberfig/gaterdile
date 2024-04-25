@@ -312,7 +312,7 @@ pub async fn join_community(
     .await;
 
     match _result {
-        Ok(x) => JoinServerResult::Success(server_id),
+        Ok(_x) => JoinServerResult::Success(server_id),
         Err(x) => {
             dbg!(x);
             JoinServerResult::Failure

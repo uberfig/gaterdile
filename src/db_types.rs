@@ -2,7 +2,7 @@ use crate::{
     db::{get_msg_by_id, DbConn},
     // schema::db_schema,
     transmission::{
-        NewTransmissionMessage, TransmissionChannel, TransmissionMessage, TransmissionServerMember,
+        NewTransmissionMessage, TransmissionMessage, TransmissionServerMember,
     },
 };
 use rocket_db_pools::Connection;
