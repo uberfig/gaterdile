@@ -1,11 +1,21 @@
 use crate::{
-    db::{
-        create_community, get_community, get_community_members, get_community_rooms, get_events_prior, get_msg_by_id, get_room_events, get_room_events_since_timestamp_and_id, get_user_communities, join_community, send_message, DbConn, User
-    },
     // db_event_types::RoomEvent,
-    db_types::{Message, ServerMember},
+    database::{
+        community::{
+            create_community, get_community, get_community_members, get_community_rooms,
+            get_user_communities, join_community,
+        },
+        db::DbConn,
+        db_types::Message,
+        messages::{
+            get_events_prior, get_msg_by_id, get_room_events,
+            get_room_events_since_timestamp_and_id, send_message,
+        },
+        users::{auth, User},
+    },
     transmission::{
-        AuthErr, ChannelEvent, CreateCommunityResult, InsertResult, NewTransmissionMessage, ServerInfoData, Transmission, TransmissionType, UserAuth
+        AuthErr, ChannelEvent, CreateCommunityResult, InsertResult, NewTransmissionMessage,
+        ServerInfoData, Transmission, TransmissionType, UserAuth,
     },
 };
 // use rocket::futures;
@@ -36,7 +46,7 @@ async fn auth_user(conn: &mut Connection<DbConn>, user: UserAuth) -> AuthErr {
     if user.username.is_empty() {
         return AuthErr::InvalidUsername;
     }
-    User::auth(user, conn).await
+    auth(user, conn).await
 }
 
 pub async fn fetch_new_events(
@@ -55,13 +65,7 @@ pub async fn fetch_new_events(
     }
 
     if props.last_sent_timestamp.is_none() {
-        handle_get_room(
-            props.listening_channel.unwrap(),
-            props,
-            conn,
-            stream,
-        )
-        .await;
+        handle_get_room(props.listening_channel.unwrap(), props, conn, stream).await;
         return;
     }
 
@@ -281,11 +285,7 @@ pub async fn handle_get_server(
     let members = get_community_members(conn, server_id).await;
     let channels = get_community_rooms(conn, server_id).await;
     // let (members, channels) = join!(members_fut, channels_fut);
-    let members = members
-        .unwrap_or(vec![])
-        .into_iter()
-        .map(ServerMember::into)
-        .collect();
+    let members = members.unwrap_or(vec![]);
     let data = ServerInfoData {
         users: members,
         channels: channels.unwrap(),
@@ -310,7 +310,6 @@ pub async fn handle_join_community(
         .wrap_into_transmission()
         .send(stream)
         .await;
-
 }
 
 pub async fn handle_create_community(
@@ -349,7 +348,7 @@ pub async fn handle_get_user_communities(
                 .wrap_into_transmission()
                 .send(stream)
                 .await;
-        },
+        }
         Err(_x) => todo!(),
     }
 }

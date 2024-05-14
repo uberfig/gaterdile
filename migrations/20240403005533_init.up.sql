@@ -83,15 +83,15 @@ CREATE TABLE room_events (
 	deleted			BIGINT
 );
 
-CREATE TABLE community_events (
-	id				BIGSERIAL PRIMARY KEY NOT NULL UNIQUE,
-	server_id		BIGINT NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
-	timestamp		BIGINT NOT NULL,
-	event_type		INTEGER NOT NULL,
-	creator			BIGINT REFERENCES users(id) ON DELETE CASCADE,
-	channel			BIGINT REFERENCES rooms(id) ON DELETE CASCADE,
-	deleted			BIGINT
-);
+-- CREATE TABLE community_events (
+-- 	id				BIGSERIAL PRIMARY KEY NOT NULL UNIQUE,
+-- 	server_id		BIGINT NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
+-- 	timestamp		BIGINT NOT NULL,
+-- 	event_type		INTEGER NOT NULL,
+-- 	creator			BIGINT REFERENCES users(id) ON DELETE CASCADE,
+-- 	channel			BIGINT REFERENCES rooms(id) ON DELETE CASCADE,
+-- 	deleted			BIGINT
+-- );
 
 CREATE TABLE user_events (
 	id				BIGSERIAL PRIMARY KEY NOT NULL UNIQUE,

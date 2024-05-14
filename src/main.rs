@@ -3,11 +3,14 @@
 #![type_length_limit = "4096"]
 #[macro_use]
 extern crate rocket;
+use gaterdile::api;
 use rocket::Shutdown;
 use std::time::Duration;
 
 use gaterdile::handlers::{
-    fetch_new_events, handle_auth, handle_create_community, handle_create_user, handle_get_room, handle_get_prior, handle_get_server, handle_get_user_communities, handle_join_community, handle_send_message, ConnectionProps
+    fetch_new_events, handle_auth, handle_create_community, handle_create_user, handle_get_prior,
+    handle_get_room, handle_get_server, handle_get_user_communities, handle_join_community,
+    handle_send_message, ConnectionProps,
 };
 use gaterdile::transmission::{Transmission, TransmissionType};
 
@@ -20,7 +23,7 @@ use rocket::{
     Build, Rocket,
 };
 
-use gaterdile::db::DbConn;
+use gaterdile::database::db::DbConn;
 use rocket::fairing;
 use rocket_db_pools::{Connection, Database};
 use rocket_ws as ws;
@@ -106,7 +109,7 @@ async fn handle_transmission(
         | TransmissionType::NoMorePrior
         | TransmissionType::ChannelEvent(_)
         | TransmissionType::ServerEvent(_)
-        | TransmissionType::UserEvent(_) 
+        | TransmissionType::UserEvent(_)
         | TransmissionType::CreateCommunityResult(_) => {
             let _ = Transmission::invalid().send(stream).await;
         }
@@ -208,6 +211,7 @@ fn rocket() -> _ {
         // .attach(DbConn::fairing())
         // .attach(Template::fairing())
         .attach(stage())
+        .attach(api::stage_api())
         // .attach(AdHoc::on_ignite("Run Migrations", run_migrations))
         .mount("/", FileServer::from(relative!("client/static")))
         .mount("/", routes![message_channel])

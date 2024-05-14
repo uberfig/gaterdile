@@ -1,29 +1,14 @@
 use crate::{
-    db::{get_msg_by_id, DbConn},
-    // schema::db_schema,
-    transmission::{
-        NewTransmissionMessage, TransmissionMessage, TransmissionServerMember,
-    },
+    database::db::DbConn,
+    transmission::{NewTransmissionMessage, TransmissionMessage},
 };
 use rocket_db_pools::Connection;
 use serde::{Deserialize, Serialize};
 
-#[derive(
-    Default,
-    Deserialize,
-    // Queryable,
-    // Insertable,
-    Debug,
-    Serialize,
-    Clone,
-    // QueryableByName,
-    // Identifiable,
-    // Selectable,
-)]
-// #[diesel(primary_key(id))]
-// #[diesel(table_name = db_schema::messages)]
+use super::messages::get_msg_by_id;
+
+#[derive(Default, Deserialize, Debug, Serialize, Clone)]
 pub struct Message {
-    // #[diesel(deserialize_as = Option<i64>)]
     pub id: Option<i64>,
     pub sender: i64,
     pub server: i64,
@@ -33,8 +18,6 @@ pub struct Message {
     pub text: String,
     pub timestamp: i64,
 }
-
-impl Message {}
 
 impl Message {
     pub async fn to_transmission(self, conn: &mut Connection<DbConn>) -> TransmissionMessage {
@@ -94,54 +77,3 @@ impl Message {
         }
     }
 }
-
-// #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-// #[diesel(table_name = db_schema::community_members)]
-pub struct ServerMember {
-    pub server_id: i64,
-    pub userid: i64,
-    pub nickname: Option<String>,
-}
-
-impl From<ServerMember> for TransmissionServerMember {
-    fn from(value: ServerMember) -> Self {
-        TransmissionServerMember {
-            server_id: value.server_id,
-            userid: value.userid,
-            nickname: value.nickname,
-        }
-    }
-}
-
-// #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-// #[diesel(table_name = db_schema::communities)]
-// #[derive(Debug)]
-
-
-// #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-// #[diesel(table_name = db_schema::rooms)]
-// pub struct Room {
-//     pub id: Option<i64>,
-//     pub server: i64,
-//     pub name: String,
-// }
-
-// impl From<Room> for TransmissionChannel {
-//     fn from(value: Room) -> Self {
-//         TransmissionChannel {
-//             id: value.id,
-//             server: value.server,
-//             name: value.name,
-//         }
-//     }
-// }
-
-// impl Room {
-//     pub fn to_transmission(self) -> TransmissionChannel {
-//         TransmissionChannel {
-//             id: self.id,
-//             server: self.server,
-//             name: self.name,
-//         }
-//     }
-// }

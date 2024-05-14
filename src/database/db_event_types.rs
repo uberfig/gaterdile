@@ -1,15 +1,11 @@
-use crate::{
-    db::{get_msg_by_id, DbConn},
-    db_types::Message,
-    transmission,
-};
+use crate::{database::db::DbConn, database::db_types::Message, transmission};
 // use diesel::result::Error;
 // use serde::{Deserialize, Serialize};
 use rocket_db_pools::Connection;
 use sqlx::Error;
 
-// #[derive(Deserialize, Queryable, Insertable, Debug, Serialize, Clone)]
-// #[diesel(table_name = db_schema::room_events)]
+use super::messages::get_msg_by_id;
+
 #[derive(Debug)]
 pub struct RoomEvent {
     pub id: Option<i64>,

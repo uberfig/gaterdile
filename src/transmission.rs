@@ -153,7 +153,7 @@ impl std::fmt::Display for ChannelEventType {
 pub enum CreateCommunityResult {
     Success(i64),
     Failure,
-} 
+}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ServerEvent {
@@ -191,7 +191,7 @@ pub enum TransmissionType {
     GetUserCommunities,
     JoinCommunity(i64),
     CreateCommunity(String), //create server with given nickname
-    GetRoom(i64),       //server, channel gets the channels recent messages
+    GetRoom(i64),            //server, channel gets the channels recent messages
     CreateRoom(i64, String), //request to create a room in provided server with provided nickname
 
     GetPriorMessages(i64), //get messages prior to provided value
