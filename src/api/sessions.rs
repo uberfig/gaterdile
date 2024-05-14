@@ -20,28 +20,19 @@ async fn login(
     let id = auth(user_auth.into_inner(), &mut conn).await;
 
     match id {
-        AuthErr::Success(x) => {
-            jar.add_private(("user_id", format!("{x}")))
-        },
-        AuthErr::InvalidUsername => {},
-        AuthErr::InvalidPassword => {},
+        AuthErr::Success(x) => jar.add_private(("user_id", format!("{x}"))),
+        AuthErr::InvalidUsername => {}
+        AuthErr::InvalidPassword => {}
     };
 
     Ok(id.into())
+}
 
-    // match id {
-    //     Err(rusqlite::Error::QueryReturnedNoRows) => Ok(AuthResult::Failed.into()),
-    //     Ok(id) => {
-    //         jar.add_private(Cookie::build(("user_id", format!("{id}"))));
-    //         jar.add_private(("session_id", format!("{}", sessions.next_session_id().0)));
-    //         Ok(AuthResult::Authorized.into())
-    //     }
-    //     Err(err) => Err(err.into()),
-    // }
+#[post("/logout")]
+async fn logout(jar: &CookieJar<'_>) {
+    jar.remove_private("user_id");
 }
 
 pub fn routes() -> Vec<Route> {
-    routes![
-        login,
-    ]
+    routes![login, logout,]
 }
